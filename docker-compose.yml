@@ -1,0 +1,61 @@
+version: "3.9"
+services:
+  apache-php82:
+    container_name: laravel-pcr
+    image: apache-php82:latest
+    ports:
+      - "9008:80"
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/var/www/html
+
+    depends_on:
+      # Tambahan: Agar aplikasi menunggu database siap
+      - db
+
+    networks:
+      # Tambahan: Menghubungkan ke jaringan yang sama
+      - laravel-net
+
+  db:
+    image: mysql:8.0
+    container_name: laravel-mysql-db
+    restart: always
+    command: --default-authentication-plugin=mysql_native_password
+    ports:
+      # Ini yang membuat database bisa diakses dari localhost Anda
+      - "33060:3306"
+    environment:
+      MYSQL_DATABASE: perpus-peminjaman
+      MYSQL_USER: user
+      MYSQL_PASSWORD: user
+      MYSQL_ROOT_PASSWORD: user
+    volumes:
+      - db-data:/var/lib/mysql
+    networks:
+      # Tambahan: Menghubungkan ke jaringan yang sama
+      - laravel-net
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: laravel-phpmyadmin
+    restart: always
+    ports:
+      - "9009:80" # <-- Kita akan akses phpMyAdmin dari port 9009
+    environment:
+      PMA_HOST: db # <-- Menghubungkan ke service 'db'
+      MYSQL_ROOT_PASSWORD: user # <-- Samakan dengan password root MySQL
+    networks:
+      - laravel-net
+    depends_on:
+      - db
+
+volumes:
+  src:
+  db-data:
+
+
+networks:
+  laravel-net:

@@ -1,0 +1,51 @@
+@extends(request()->query('snap') == true ? 'layouts.snap' : 'layouts.apps')
+@section('toolbar')
+    <x-theme.toolbar :breadCrump="$pageData->breadCrump" :title="$pageData->title">
+        <x-slot:tools>
+        </x-slot:tools>
+    </x-theme.toolbar>
+@endsection
+
+@section('content')
+    <!--begin::Content container-->
+    <div id="kt_app_content_container" class="app-container container-fluid">
+        <div class="row">
+            <div class="col-md-12" data-cue="slideInLeft" data-duration="1000" data-delay="0">
+                <x-table.dttable :builder="$pageData->dataTable" :responsive="false" draw_callback="" jf-data="{{tableName}}" jf-list="datatable" class="align-middle">
+                    @slot('action')
+                        <x-btn type="primary" class="act-add w-100 w-md-auto" jf-add="{{tableName}}">
+                            <i class="bi bi-plus fs-2"></i> Tambah data
+                        </x-btn>
+                    @endslot
+                </x-table.dttable>
+            </div>
+        </div>
+
+    </div>
+
+    <x-modal id="modalForm" type="centered" :static="true" size="md" title="{{classTitle}}" jf-modal="{{tableName}}">
+        <form id="formData" class="needs-validation" jf-form="{{tableName}}">
+            <x-form.input class="mb-2" type="hidden" name="id"></x-form.input>
+            {{formInput}}
+        </form>
+        @slot('action')
+            <x-btn.form action="save" class="act-save" jf-save="{{tableName}}" />
+        @endslot
+    </x-modal>
+@endsection
+
+@push('scripts')
+    <x-script.crud2></x-script.crud2>
+    <script>
+        let tableId = '{{ $pageData->dataTable->getTableId() }}'
+
+        jForm.init({
+            name: "{{tableName}}",
+            base_url: "{{ route('{{routePrefix}}{{tableName}}.index') }}"
+        })
+
+        function renderKet(text) {
+            return `<div class="long-text mh-25px">${text}</div>`;
+        }
+    </script>
+@endpush

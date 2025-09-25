@@ -1,0 +1,28 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+class CreatePostKategoriTable extends Migration
+{
+    public function up()
+    {
+        Schema::create('post_kategori', function (Blueprint $table) {
+            $table->increments('postkategori_id');
+            $table->string('kode_kategori', 100);
+            $table->string('nama_kategori', 100);
+            $table->text('deskripsi_kategori')->nullable();
+            $table->string('created_by', 10)->nullable();
+            $table->string('updated_by', 10)->nullable();
+            $table->string('deleted_by', 10)->nullable();
+            $table->timestamps();
+            $table->softDeletes();
+        });
+    }
+
+    public function down()
+    {
+        Schema::dropIfExists('post_kategori');
+    }
+}

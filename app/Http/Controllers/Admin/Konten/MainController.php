@@ -1,0 +1,173 @@
+<?php
+
+/*
+ * Author: @wahyudibinsaid
+ * Created At: {{currTime}}
+ */
+
+namespace App\Http\Controllers\Admin\Konten;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Blade;
+use Yajra\DataTables\DataTables;
+use Yajra\DataTables\Html\Column;
+
+class MainController extends Controller
+{
+    function __construct()
+    {
+        /**
+         * use this if needed
+         */
+        $this->activeRoot   = 'main';
+        $this->breadCrump[] = ['title' => '', 'link' => url('')];
+    }
+
+    function index()
+    {
+        $this->title        = 'Kelola Main Site';
+        $this->activeMenu   = 'konten-main';
+        $this->breadCrump[] = ['title' => '', 'link' => url()->current()];
+
+        $this->dataView([]);
+
+        return $this->view('admin.konten.main');
+    }
+
+    // public function show($param1 = '', $param2 = '')
+    // {
+    //     abort(404, 'Halaman tidak ditemukan');
+    // }
+
+    // function store(Request $req, $param1 = ''): JsonResponse
+    // {
+    //     if ($param1 == '') {
+    //         validate_and_response([
+    //             {{validationField}}
+    //         ]);
+
+    //         // insert data
+    //         {{dataStore}}
+
+    //         // Simpan data
+    //         if ({{modelName}}::create($data)) {
+    //             return response()->json([
+    //                 'status'  => true,
+    //                 'message' => 'Tambah data berhasil.'
+    //             ]);
+    //         } else {
+    //             abort(500, 'Tambah data gagal, kesalahan database');
+    //         }
+    //     }
+
+    //     // default
+    //     else {
+    //         abort(404, 'Halaman tidak ditemukan');
+    //     }
+    // }
+
+    // function update(Request $req, $param1 = '', $param2 = ''): JsonResponse
+    // {
+    //     if ($param1 == '') {
+    //         validate_and_response([
+    //             'id' => ['Param Data', 'required'],
+    //             {{validationField}}
+    //         ]);
+
+    //         $currData = {{modelName}}::findOrFail(decid($req->input('id')));
+
+    //         // Perbarui data
+    //         {{dataStore}}
+
+    //         // Simpan perubahan
+    //         if ($currData->update($data)) {
+    //             return response()->json([
+    //                 'status'  => true,
+    //                 'message' => 'Update data berhasil.',
+    //                 'data'    => null,
+    //             ]);
+    //         } else {
+    //             abort(500, 'Update data gagal, kesalahan database');
+    //         }
+    //     }
+
+    //     // default
+    //      else {
+    //         abort(404, 'Halaman tidak ditemukan');
+    //     }
+    // }
+
+    // function destroy(Request $req, $param1 = ''): JsonResponse
+    // {
+    //     if ($param1 == '') {
+    //         validate_and_response([
+    //             'id' => ['Parameter data', 'required'],
+    //         ]);
+
+    //         $currData = {{modelName}}::findOrFail(decid($req->input('id')));
+
+    //         $currData->delete();
+    //         return response()->json(['status' => true, 'message' => 'Data berhasil dihapus']);
+    //     }
+
+    //     // default
+    //      else {
+    //         abort(404, 'Halaman tidak ditemukan');
+    //     }
+    // }
+
+    // function data(Request $req, $param1 = '', $param2 = ''): JsonResponse
+    // {
+    //     if ($param1 == 'detail') {
+    //         validate_and_response([
+    //             'id' => ['Parameter data', 'required'],
+    //         ]);
+
+    //         $currData = {{modelName}}::findOrFail(decid($req->input('id')))->makeHidden({{modelName}}::$exceptEdit);
+
+    //         $currData->id         = $req->input('id');
+
+    //         return response()->json(['status' => true, 'message' => 'Data loaded', 'data' => $currData]);
+    //     } else if ($param1 == 'list') {
+    //         // custom filter
+    //         $filter = [];
+
+    //         $data = DataTables::of({{modelName}}::getDataDetail($filter, get: false))->toArray();
+
+    //         $start = $req->input('start');
+    //         $resp  = [];
+    //         foreach ($data['data'] as $key => $value) {
+    //             $dt = [];
+
+    //             $dt['no']                    = ++$start;
+    //             {{dataView}}
+
+    //             $id = encid($value['{{tableId}}']);
+
+    //             $dataAction = [
+    //                 'id'  => $id,
+    //                 'btn' => [
+    //                     ['action' => 'edit', 'attr' => ['jf-edit' => $id]],
+    //                     ['action' => 'delete', 'attr' => ['jf-delete' => $id]],
+    //                 ]
+    //             ];
+
+    //             $dt['action'] = Blade::render('<x-btn.actiontable :id="$id" :btn="$btn"/>', $dataAction);
+
+    //             $resp[] = $dt;
+    //         }
+    //         $data['data'] = $resp;
+
+
+    //         return response()->json($data);
+    //     }
+
+    //     // default
+    //      else {
+    //         abort(404, 'Halaman tidak ditemukan');
+    //     }
+    // }
+}
+/* This controller generate by @wahyudibinsaid laravel best practices snippets */

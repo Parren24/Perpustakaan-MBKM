@@ -1,0 +1,31 @@
+stages:
+- deploy
+
+deploy-to-development:
+  stage: deploy
+  script:
+    - echo "the development server is temporarily shut down"
+  only:
+    - dev
+  tags:
+    - compro-runner
+
+deploy-to-development-branch:
+  stage: deploy
+  script:
+    - echo "the development server is temporarily shut down"
+  only:
+    - /-DEV$/
+  tags:
+    - compro-runner
+deploy-to-production:
+  stage: deploy
+  script:
+    - sudo rsync -azog -e ssh --delete --usermap=gitlab-runner:www-data --groupmap=gitlab-runner:www-data --exclude='.git/' --exclude='.gitlab-ci.yml' . root@prod:/data/WEB/compro/
+    - ssh root@prod 'POD_ACCOUNTS=$(kubectl get pods -l app=compro --namespace=default -o jsonpath="{.items[0].metadata.name}"); kubectl exec -it $POD_ACCOUNTS --namespace=default -- bash -c "cd /var/www/html && composer install && php artisan env:decrypt --force && php artisan config:cache && php artisan cache:clear && php artisan config:clear && php artisan view:clear && php artisan storage:link && chown -R www-data:www-data /var/www/html/storage && chown -R www-data:www-data /var/www/html/public && nohup php artisan queue:work --daemon &> nohup.out & "'
+
+  only:
+    - /-RELEASE$/
+  tags:
+    - compro-runner
+
