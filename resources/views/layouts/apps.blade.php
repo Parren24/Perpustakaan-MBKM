@@ -18,7 +18,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <!-- @include('layouts.inc.css') -->
+    @include('layouts.inc.css')
     <style>
         .bg-theme {
             /* background-color: #e5f6fe !important; */
@@ -29,7 +29,7 @@
             background-color: #00111a !important;
         }
     </style>
-    <!-- @include('layouts.inc.js') -->
+    @include('layouts.inc.js')
 </head>
 <!--end::Head-->
 <!--begin::Body-->
