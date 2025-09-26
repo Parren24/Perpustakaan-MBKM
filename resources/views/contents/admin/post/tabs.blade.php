@@ -16,3 +16,4 @@
             href="{{ route('app.post.show', ['param1' => 'label']) }}">Label</a>
     </li>
 </ul>
+ 

@@ -289,7 +289,7 @@
     $window.on("scroll", handleScroll);
     handleScroll(); // Initial call to set the state based on current scroll position
 
-    if (navigation.addEventListener) {
+    if (window.navigation && navigation.addEventListener) {
         navigation.addEventListener("navigate", function (e) {
             if (!e.destination.url.includes(document.location.origin)) {
                 return;

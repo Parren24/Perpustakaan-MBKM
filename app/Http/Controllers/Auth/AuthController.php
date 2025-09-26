@@ -34,6 +34,7 @@ class AuthController extends Controller
                 'wahyudi@pcr.ac.id',
                 'fajar@pcr.ac.id',
                 'brilian21ti@mahasiswa.pcr.ac.id',
+                'varrent22si@mahasiswa.pcr.ac.id',
             ];
 
             if (!in_array($googleUser->getEmail(), $allowedEmails)) {
@@ -46,14 +47,13 @@ class AuthController extends Controller
                 $user = User::create([
                     'name' => $googleUser->getName(),
                     'email' => $googleUser->getEmail(),
-                    'password' => bcrypt(uniqid()), 
+                    'password' => bcrypt(uniqid()),
                 ]);
             }
 
             Auth::login($user, true);
 
             return redirect()->intended('/app/dashboard');
-
         } catch (\Exception $e) {
             return redirect()->route('login')->with('error', 'Google login failed!');
         }
