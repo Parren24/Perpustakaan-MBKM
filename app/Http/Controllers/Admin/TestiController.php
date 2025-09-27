@@ -51,12 +51,12 @@ class TestiController extends Controller
 
         $temp = [];
         $filter = [];
-        foreach (Prodi::where($filter)->get() as $row) {
-            $temp[] = [
-                'id' => encid($row->prodi_id),
-                'text' => $row->jenjang_pendidikan . '-' . $row->nama_prodi . ($row->konsentrasi ? ' ' . $row->konsentrasi : '')
-            ];
-        }
+        // foreach (Prodi::where($filter)->get() as $row) {
+        //     $temp[] = [
+        //         'id' => encid($row->prodi_id),
+        //         'text' => $row->jenjang_pendidikan . '-' . $row->nama_prodi . ($row->konsentrasi ? ' ' . $row->konsentrasi : '')
+        //     ];
+        // }
         $dataProdi = $temp;
 
         $this->dataView([

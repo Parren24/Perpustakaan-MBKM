@@ -6,6 +6,9 @@
         class="app-sidebar-menu-primary menu menu-column menu-rounded menu-sub-indention menu-state-bullet-primary px-6 mb-5">
 
         <x-theme.menu link="{{ url('dashboard') }}" text="Dashboard" icon="ki-outline ki-graph-up" :active="$pageData->activeMenu == 'dashboard'" />
+       
+        <x-theme.menu link="{{ route('app.biblio.index') }}" text="Biblio" icon="ki-outline ki-book" :active="$pageData->activeMenu == 'biblio'" />
+        <div class="separator separator-dashed border-gray-10 my-2"></div>
 
         {{-- <x-theme.menu text="Master Data" icon="ki-outline ki-abstract-26" :active="$pageData->activeRoot == 'master'">
             <x-theme.submenu link="{{ route('app.master.show', ['param1' => 'infografis']) }}" text="Infografis"

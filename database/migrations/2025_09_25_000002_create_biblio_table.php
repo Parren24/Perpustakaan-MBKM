@@ -11,14 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('books', function (Blueprint $table) {
-            $table->id();
+        Schema::create('biblio', function (Blueprint $table) {
+            $table->increments('biblio_id');
             $table->string('title');
             $table->string('author');
             $table->text('description')->nullable();
             $table->integer('year');
             $table->string('publisher');
             $table->integer('stock')->default(0);
+            $table->string('created_by', 10)->nullable();
+            $table->string('updated_by', 10)->nullable();
+            $table->string('deleted_by', 10)->nullable();
             $table->timestamps();
             $table->softDeletes(); // Adds deleted_at column for soft deletes
         });
@@ -29,6 +32,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('books');
+        Schema::dropIfExists('biblio');
     }
 };

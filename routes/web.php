@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Admin\BiblioController;
 use Illuminate\Support\Facades\Route;
 
 include_once __DIR__ . "/web-frontend.php";
@@ -28,10 +29,13 @@ Route::prefix('app')
 
         generalRoute(App\Http\Controllers\Admin\PostController::class, 'post', 'app');
         generalRoute(App\Http\Controllers\Admin\AgendaController::class, 'agenda', 'app');
+        
         generalRoute(App\Http\Controllers\Admin\TestiController::class, 'testi', 'app');
 
         generalRoute(App\Http\Controllers\Admin\MediaController::class, 'media', 'app', false);
         generalRoute(App\Http\Controllers\Admin\MasterController::class, 'master', 'app');
+
+        generalRoute(App\Http\Controllers\Admin\BiblioController::class, 'biblio', 'app');
     });
 
 // //temporary
