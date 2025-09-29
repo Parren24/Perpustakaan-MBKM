@@ -29,27 +29,36 @@ class AuthController extends Controller
         try {
             $googleUser = Socialite::driver($provider)->user();
 
-            $allowedEmails = [
-                'delza@pcr.ac.id',
-                'wahyudi@pcr.ac.id',
-                'fajar@pcr.ac.id',
-                'brilian21ti@mahasiswa.pcr.ac.id',
-                'varrent22si@mahasiswa.pcr.ac.id',
-            ];
+            // $allowedEmails = [
+            //     'delza@pcr.ac.id',
+            //     'wahyudi@pcr.ac.id',
+            //     'fajar@pcr.ac.id',
+            //     'brilian21ti@mahasiswa.pcr.ac.id',
+            //     'varrent22si@mahasiswa.pcr.ac.id',
+            //     'varrentedbert@gmail.com'
+            // ];
 
-            if (!in_array($googleUser->getEmail(), $allowedEmails)) {
-                return redirect()->route('login')->with('error', 'Email tidak diizinkan untuk login.');
-            }
+            // if (!in_array($googleUser->getEmail(), $allowedEmails)) {
+            //     return redirect()->route('login')->with('error', 'Email tidak diizinkan untuk login.');
+            // }
 
             $user = User::where('email', $googleUser->getEmail())->first();
 
+            // if (!$user) {
+            //     $user = User::create([
+            //         'name' => $googleUser->getName(),
+            //         'email' => $googleUser->getEmail(),
+            //         'password' => bcrypt(uniqid()),
+            //     ]);
+            // }
             if (!$user) {
-                $user = User::create([
-                    'name' => $googleUser->getName(),
-                    'email' => $googleUser->getEmail(),
-                    'password' => bcrypt(uniqid()),
-                ]);
+                return redirect()->route('login')->with('error', 'Akun tidak ditemukan. Silakan hubungi administrator.');
             }
+
+            $user->update([
+                'name' => $googleUser->getName(),
+                'google_id' => $googleUser->getId(),
+            ]);
 
             Auth::login($user, true);
 

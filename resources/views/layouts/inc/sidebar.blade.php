@@ -6,25 +6,27 @@
         class="app-sidebar-menu-primary menu menu-column menu-rounded menu-sub-indention menu-state-bullet-primary px-6 mb-5">
 
         <x-theme.menu link="{{ url('dashboard') }}" text="Dashboard" icon="ki-outline ki-graph-up" :active="$pageData->activeMenu == 'dashboard'" />
-       
+
         <x-theme.menu link="{{ route('app.biblio.index') }}" text="Biblio" icon="ki-outline ki-book" :active="$pageData->activeMenu == 'biblio'" />
+        <x-theme.menu link="{{ route('app.user.index') }}" text="User" icon="ki-outline ki-user" :active="$pageData->activeMenu == 'user'" />
+
         <div class="separator separator-dashed border-gray-10 my-2"></div>
 
         {{-- <x-theme.menu text="Master Data" icon="ki-outline ki-abstract-26" :active="$pageData->activeRoot == 'master'">
             <x-theme.submenu link="{{ route('app.master.show', ['param1' => 'infografis']) }}" text="Infografis"
-                :active="$pageData->activeMenu == 'infografis'" />
-            <x-theme.submenu link="{{ route('app.master.show', ['param1' => 'partner']) }}" text="Partner"
-                :active="$pageData->activeMenu == 'partner'" />
-            <x-theme.submenu link="{{ route('app.master.show', ['param1' => 'social-media']) }}" text="Social Media"
-                :active="$pageData->activeMenu == 'social-media'" />
-            <x-theme.submenu link="{{ route('app.master.show', ['param1' => 'kontak']) }}" text="Kontak"
-                :active="$pageData->activeMenu == 'kontak'" />
-            <x-theme.submenu link="{{ route('app.master.show', ['param1' => 'pegawai']) }}" text="Pegawai"
-                :active="$pageData->activeMenu == 'pegawai'" />
-            <x-theme.submenu link="{{ route('app.master.show', ['param1' => 'jurusan']) }}" text="Jurusan"
-                :active="$pageData->activeMenu == 'jurusan'" />
-            <x-theme.submenu link="{{ route('app.master.show', ['param1' => 'prodi']) }}" text="Program Studi"
-                :active="$pageData->activeMenu == 'prodi'" />
+        :active="$pageData->activeMenu == 'infografis'" />
+        <x-theme.submenu link="{{ route('app.master.show', ['param1' => 'partner']) }}" text="Partner"
+            :active="$pageData->activeMenu == 'partner'" />
+        <x-theme.submenu link="{{ route('app.master.show', ['param1' => 'social-media']) }}" text="Social Media"
+            :active="$pageData->activeMenu == 'social-media'" />
+        <x-theme.submenu link="{{ route('app.master.show', ['param1' => 'kontak']) }}" text="Kontak"
+            :active="$pageData->activeMenu == 'kontak'" />
+        <x-theme.submenu link="{{ route('app.master.show', ['param1' => 'pegawai']) }}" text="Pegawai"
+            :active="$pageData->activeMenu == 'pegawai'" />
+        <x-theme.submenu link="{{ route('app.master.show', ['param1' => 'jurusan']) }}" text="Jurusan"
+            :active="$pageData->activeMenu == 'jurusan'" />
+        <x-theme.submenu link="{{ route('app.master.show', ['param1' => 'prodi']) }}" text="Program Studi"
+            :active="$pageData->activeMenu == 'prodi'" />
         </x-theme.menu>
 
         <div class="separator separator-dashed border-gray-10 my-2"></div>
@@ -58,7 +60,7 @@
         </x-theme.menu>
 
         {{-- <x-theme.menu link="{{ route('app.media.index') }}" text="Media" icon="ki-outline ki-external-drive"
-            :active="$pageData->activeMenu == 'media'" />
+        :active="$pageData->activeMenu == 'media'" />
 
         <div class="separator separator-dashed border-gray-10 my-2"></div>
 
