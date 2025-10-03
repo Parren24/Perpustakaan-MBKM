@@ -8,14 +8,11 @@
 
 @section('content')
 <div id="kt_app_content_container" class="app-container container-fluid" data-cue="slideInLeft" data-duration="1000"
-        data-delay="0">
+    data-delay="0">
     <form id="formData" class="form needs-validation" jf-form="biblio" action="{{ route('app.biblio.update') }}">
         @csrf
         <input type="hidden" name="id" value="{{ $pageData->dataBiblio['id'] ?? '' }}">
         <div class="card">
-            <div class="card-header">
-                <div class="card-title">Detail Buku</div>
-            </div>
             <div class="card-body">
                 <div class="row mb-5">
                     <div class="col-md-6">
@@ -70,9 +67,7 @@
                 </div>
             </div>
             <div class="card-footer d-flex justify-content-end py-6">
-                <a href="{{ route('app.biblio.index') }}" class="btn btn-light me-3">
-                    <i class="bi bi-x-circle"></i> Batal
-                </a>
+                <x-btn.form action="cancel" class="btn-warning" link="{{ route('app.biblio.index') }}" />
                 <x-btn.form action="save" class="act-save" jf-save="biblio" />
             </div>
         </div>
@@ -87,7 +82,7 @@
         name: "biblio",
         url: {
             add: `{{ route('app.biblio.store') }}`,
-            edit: `{{ route('app.biblio.data', ['param1' => 'detail']) }}`,
+            // edit: `{{ route('app.biblio.data', ['param1' => 'detail']) }}`,
             update: `{{ route('app.biblio.update') }}`
 
         },

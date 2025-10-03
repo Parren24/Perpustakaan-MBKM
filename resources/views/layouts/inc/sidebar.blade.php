@@ -5,10 +5,11 @@
     <div id="#kt_app_sidebar_menu" data-kt-menu="true" data-kt-menu-expand="false"
         class="app-sidebar-menu-primary menu menu-column menu-rounded menu-sub-indention menu-state-bullet-primary px-6 mb-5">
 
-        <x-theme.menu link="{{ url('dashboard') }}" text="Dashboard" icon="ki-outline ki-graph-up" :active="$pageData->activeMenu == 'dashboard'" />
+        <x-theme.menu link="{{ route('app.dashboard.index') }}" text="Dashboard" icon="ki-outline ki-graph-up" :active="$pageData->activeMenu == 'dashboard'" />
 
         <x-theme.menu link="{{ route('app.biblio.index') }}" text="Biblio" icon="ki-outline ki-book" :active="$pageData->activeMenu == 'biblio'" />
         <x-theme.menu link="{{ route('app.user.index') }}" text="User" icon="ki-outline ki-user" :active="$pageData->activeMenu == 'user'" />
+        <x-theme.menu link="{{ route('app.roles.index') }}" text="Roles & Permissions" icon="ki-outline ki-lock" :active="$pageData->activeMenu == 'roles'" />
 
         <div class="separator separator-dashed border-gray-10 my-2"></div>
 

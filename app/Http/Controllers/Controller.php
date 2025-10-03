@@ -2,17 +2,20 @@
 
 namespace App\Http\Controllers;
 
-abstract class Controller
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Foundation\Validation\ValidatesRequests;
+use Illuminate\Routing\Controller as BaseController;
+
+abstract class Controller extends BaseController
 {
+    use AuthorizesRequests, ValidatesRequests;
     public $pageData = [];
     public $title = NULL;
     public $activeRoot = NULL;
     public $activeMenu = NULL;
     public $breadCrump = [];
 
-    public function __construct()
-    {
-    }
+    public function __construct() {}
 
     public function dataView(array $var)
     {

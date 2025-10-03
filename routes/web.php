@@ -36,7 +36,16 @@ Route::prefix('app')
         generalRoute(App\Http\Controllers\Admin\MasterController::class, 'master', 'app');
 
         generalRoute(App\Http\Controllers\Admin\BiblioController::class, 'biblio', 'app');
+       
+
+
+
         generalRoute(App\Http\Controllers\Admin\UserController::class, 'user', 'app');
+        generalRoute(App\Http\Controllers\Admin\RoleController::class, 'roles', 'app', false);
+
+        // User Management Routes
+        // generalRoute(App\Http\Controllers\Admin\RoleController::class, 'roles', 'app');
+
     });
 
 // //temporary

@@ -23,15 +23,17 @@
     <form id="formData" class="needs-validation" jf-form="user">
         <input type="hidden" name="id" value="">
         <div class="mb-4">
-            <x-form.input name="email" label="email Pengguna" value="" required />
+            <x-form.input name="email" label="Email Pengguna" value="" required />
         </div>
         <div class="mb-4">
+            {{-- PERBAIKAN: Bagian ini sekarang akan berfungsi karena variabel $roles sudah dikirim dari controller --}}
             <x-form.select name="role" label="Role" required>
-                <option value="admin">Admin</option>
-                <option value="user">User</option>
+                <option value="" disabled selected>Pilih Role</option>
+                @foreach($pageData->roles as $roleName)
+                <option value="{{ $roleName }}">{{ $roleName }}</option>
+                @endforeach
             </x-form.select>
         </div>
-
     </form>
     @slot('action')
     <x-btn.form action="save" class="act-save" jf-save="user" />

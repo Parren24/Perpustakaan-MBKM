@@ -12,12 +12,17 @@
     data-delay="0">
     <x-table.dttable :builder="$pageData->dataTable" class="align-middle table-row-dashed" :responsive="true" jf-data="biblio" jf-list="datatable">
         @slot('action')
+        {{-- Only Administrator and Admin can create --}}
+        @can('biblio-create')
         <x-btn type="primary" jf-add="biblio">
             <i class="bi bi-plus fs-2"></i> Tambah Buku
         </x-btn>
+        @endcan
+
         @endslot
     </x-table.dttable>
 </div>
+
 
 <x-modal id="modalForm" type="centered" :static="true" size="lg" jf-modal="biblio" title="Data Buku">
     <form id="formData" class="needs-validation" jf-form="biblio">

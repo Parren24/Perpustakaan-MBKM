@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Auth;
 use Yajra\DataTables\DataTables;
 use Yajra\DataTables\Html\Column;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +20,10 @@ class BiblioController extends Controller
     {
         $this->activeRoot   = 'biblio';
         $this->breadCrump[] = ['title' => 'Biblio', 'link' => url('#')];
+        $this->middleware('permission:biblio-list', ['only' => ['index', 'data']]);
+        $this->middleware('permission:biblio-create', ['only' => ['store']]);
+        $this->middleware('permission:biblio-edit', ['only' => ['update']]);
+        $this->middleware('permission:biblio-delete', ['only' => ['destroy']]);
     }
 
     /**
@@ -26,6 +31,7 @@ class BiblioController extends Controller
      */
     function index()
     {
+        
         $this->title        = 'Kelola Biblio';
         $this->activeMenu   = 'biblio';
         $this->breadCrump[] = ['title' => 'Biblio', 'link' => url()->current()];
@@ -64,6 +70,9 @@ class BiblioController extends Controller
      */
     function store(Request $req, $param1 = ''): JsonResponse
     {
+        // Check permission
+
+
         if ($param1 == '') {
             validate_and_response([
                 'title' => ['Judul', 'required|max:255'],
@@ -155,6 +164,9 @@ class BiblioController extends Controller
     public function show($param1 = '', $param2 = '')
     {
         if ($param1 == 'form') {
+            // Check permission for edit
+
+
             $this->title        = 'Form Biblio';
             $this->activeMenu   = 'biblio';
             $this->breadCrump[] = ['title' => 'Form', 'link' => url()->current()];
@@ -178,12 +190,61 @@ class BiblioController extends Controller
 
             return $this->view('admin.biblio.form');
         }
-
-        abort(404, 'Halaman tidak ditemukan');
     }
+
+    // /**
+    //  * Update the specified resource in storage.
+    //  */
+    // function update(Request $req, $param1 = ''): JsonResponse
+    // {
+    //     // Check permission
+
+
+    //     if ($param1 == '') {
+    //         validate_and_response([
+    //             'id' => ['ID', 'required'],
+    //             'title' => ['Judul', 'required|max:255'],
+    //             'author' => ['Penulis', 'required|max:255'],
+    //             'description' => ['Deskripsi', 'nullable'],
+    //             'year' => ['Tahun', 'required|integer'],
+    //             'publisher' => ['Penerbit', 'required|max:255'],
+    //             'stock' => ['Stok', 'required|integer'],
+    //         ]);
+
+    //         $biblio = Biblio::findOrFail(decid($req->id));
+
+    //         $data = [
+    //             'title' => clean_post('title'),
+    //             'author' => clean_post('author'),
+    //             'description' => clean_post('description'),
+    //             'year' => clean_post('year'),
+    //             'publisher' => clean_post('publisher'),
+    //             'stock' => clean_post('stock'),
+    //         ];
+
+    //         if ($biblio->update($data)) {
+    //             return response()->json([
+    //                 'status'  => true,
+    //                 'message' => 'Update data berhasil.',
+    //                 'data'    => ['id' => encid($biblio->biblio_id)]
+    //             ]);
+    //         } else {
+    //             abort(500, 'Update data gagal, kesalahan database');
+    //         }
+    //     }
+
+    //     abort(404, 'Halaman tidak ditemukan');
+    // }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+
+
 
     function destroy(Request $req, $param1 = ''): JsonResponse
     {
+
         if ($param1 == '') {
             validate_and_response([
                 'id' => ['Parameter data', 'required'],
@@ -213,6 +274,7 @@ class BiblioController extends Controller
 
     function data(Request $req, $param1 = ''): JsonResponse
     {
+        // Check permission
         if ($param1 == 'list') {
             // Pass 'false' to getDataDetail to get the query builder instance, not the collection.
             $query = Biblio::getDataDetail([], [], false);

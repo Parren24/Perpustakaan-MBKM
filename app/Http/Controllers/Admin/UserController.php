@@ -14,10 +14,12 @@ use Illuminate\Support\Facades\Blade;
 use Yajra\DataTables\DataTables;
 use Yajra\DataTables\Html\Column;
 use App\Models\User;
-// use Illuminate\Container\Attributes\DB;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
 class UserController extends Controller
@@ -29,6 +31,10 @@ class UserController extends Controller
          */
         $this->activeRoot   = '';
         $this->breadCrump[] = ['title' => '', 'link' => url('')];
+        $this->middleware('permission:user-list', ['only' => ['index', 'data']]);
+        $this->middleware('permission:user-create', ['only' => ['store']]);
+        $this->middleware('permission:user-edit', ['only' => ['update']]);
+        $this->middleware('permission:user-delete', ['only' => ['destroy']]);
     }
 
     function index()
@@ -56,8 +62,12 @@ class UserController extends Controller
                 Column::make(['title' => 'Role', 'data' => 'role', 'className' => 'text-center']),
             ]);
 
+        $roles = \Spatie\Permission\Models\Role::pluck('name', 'name')->all();
+
+        // 2. Kirim variabel $roles ke view melalui method dataView().
         $this->dataView([
-            'dataTable' => $dataTable
+            'dataTable' => $dataTable,
+            'roles' => $roles // <-- Baris ini yang memperbaiki error
         ]);
 
         return $this->view('admin.user.list');
@@ -65,23 +75,21 @@ class UserController extends Controller
 
     public function show($param1 = '', $param2 = '')
     {
-        if ($param1 == 'form') {
-            $this->title        = 'Form Pengguna';
-            $this->activeMenu   = 'user';
-            $this->breadCrump[] = ['title' => 'Form', 'link' => url()->current()];
+        // if ($param1 == 'form') {
+        //     $this->title        = 'Form Pengguna';
+        //     $this->activeMenu   = 'user';
+        //     $this->breadCrump[] = ['title' => 'Form', 'link' => url()->current()];
 
-            $dataUser = null;
-            if ($param2) {
-                $id = decid($param2);
-                $dataUser = User::findOrFail($id);
-            }
+        //     $dataUser = null;
+        //     if ($param2) {
+        //         $dataUser = User::with('roles')->findOrFail(decid($param2));
+        //     }
 
-            $this->dataView([
-                'dataUser' => $dataUser,
-            ]);
+        //     $roles = Role::pluck('name', 'id');
 
-            return $this->view('admin.user.form'); // Pastikan Anda memiliki view form.blade.php
-        }
+        //     $this->dataView(['dataUser' => $dataUser, 'roles' => $roles]);
+        //     return $this->view('admin.user.form');
+        // }
 
         abort(404, 'Halaman tidak ditemukan');
     }
@@ -91,32 +99,32 @@ class UserController extends Controller
         try {
             validate_and_response([
                 'email'    => ['Email', 'required|string|email|max:255|unique:users'],
-                'role'     => ['Role', 'required|string', Rule::in(['admin', 'user'])],
+                'role'     => ['Role', 'required|string', Rule::in(Role::pluck('name')->toArray())],
             ]);
-
-            $data = [
-                'name'     => $req->email,
-                'email'    => $req->email,
-                // Password dibuat secara acak dan aman (dummy)
-                'password' => Hash::make(uniqid()),
-                'role'     => $req->role,
-            ];
-
-
 
             DB::beginTransaction();
             try {
-                $inserted = User::create($data);
+                // Create user with array data
+                $userData = [
+                    'name'     => $req->email,
+                    'email'    => $req->email,
+                    'password' => Hash::make(uniqid()), // Random password
+                ];
+
+                $inserted = User::create($userData);
+
+                // Assign Spatie role
+                $inserted->assignRole($req->role);
+
                 DB::commit();
 
                 return response()->json([
                     'status'  => true,
                     'message' => 'Email pengguna berhasil didaftarkan.',
-                    'data'    => ['id' => encid($inserted->id)] // Mengembalikan ID untuk konsistensi
+                    'data'    => ['id' => encid($inserted->id)]
                 ]);
             } catch (\Throwable $e) {
                 DB::rollBack();
-                // Memberikan pesan error yang lebih spesifik
                 abort(500, 'Pendaftaran gagal, terjadi kesalahan pada database: ' . $e->getMessage());
             }
         } catch (ValidationException $e) {
@@ -127,32 +135,7 @@ class UserController extends Controller
         }
     }
 
-    function update(Request $req): JsonResponse
-    {
-        try {
-            $id = decid($req->input('id'));
 
-            validate_and_response([
-                'id'    => ['ID', 'required'],
-                'email' => ['Email', 'required|string|email|max:255|' . Rule::unique('users')->ignore(decid($req->id))],
-                'role'  => ['Role', 'required|string', Rule::in(['admin', 'user'])],
-            ]);
-
-            $id = decid($req->input('id'));
-            $user = User::findOrFail($id);
-            $user->email = $req->email;
-            $user->role = $req->role;
-            // Nama dan password tidak diubah di sini
-            $user->save();
-
-            return response()->json(['status' => true, 'message' => 'Data pengguna berhasil diperbarui.']);
-        } catch (ValidationException $e) {
-            return response()->json([
-                'message' => 'The given data was invalid.',
-                'errors' => $e->errors(),
-            ], 422);
-        }
-    }
 
     function destroy(Request $req): JsonResponse
     {
@@ -175,7 +158,7 @@ class UserController extends Controller
     function data(Request $req, $param1 = ''): JsonResponse
     {
         if ($param1 == 'list') {
-            $query = User::query();
+            $query = User::with('roles');
 
             return DataTables::of($query)
                 ->addIndexColumn()
@@ -184,11 +167,13 @@ class UserController extends Controller
                     $dataAction = [
                         'id' => $id,
                         'btn' => [
-                            ['action' => 'edit', 'link' => route('app.user.show', ['param1' => 'form', 'param2' => $id])],
-                            ['action' => 'delete', 'attr' => ['jf-delete' => $id]],
+                            ['action' => 'delete', 'attr' => ['jf-delete' => $id]]
                         ]
                     ];
                     return view('components.btn.actiontable', $dataAction)->render();
+                })
+                ->addColumn('role', function ($user) {
+                    return $user->roles->first()->name ?? 'N/A';
                 })
                 ->rawColumns(['action'])
                 ->make(true);

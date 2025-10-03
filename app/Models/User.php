@@ -6,22 +6,32 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, HasRoles;
 
     /**
      * The attributes that are mass assignable.
      *
      * @var array<int, string>
      */
+
+    public static array $exceptEdit = [
+        'id',
+        'email_verified_at',
+        'password',
+        'remember_token',
+        'created_at',
+        'updated_at',
+    ];
+
     protected $fillable = [
         'name',
         'email',
         'password',
         'google_id', // <-- Tambahkan ini
-        'role',      // <-- Tambahkan ini
     ];
 
     /**
