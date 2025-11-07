@@ -237,7 +237,7 @@ class SafeDataService
                 'menus'         => ['services' => [], 'academic' => []],
                 'copyright'     => ['full_text' => '© Politeknik Caltex Riau'],
                 'hero_cta'      => [
-                    ['text' => 'Profil PCR', 'url' => '#', 'class' => 'btn-default'],
+                    ['text' => 'Profil PCR', 'route' => '#', 'class' => 'btn-default'],
                     ['text' => 'Daftar Sekarang', 'url' => '#', 'class' => 'btn-default']
                 ],
                 'hints_section' => [
@@ -995,6 +995,28 @@ class SafeDataService
                     'description' => '',
                     'links'       => []
                 ]
+            ]
+        ]);
+    }
+
+    public static function getPeminjamanFallbacks(): object
+    {
+        return self::createSafeStructure([
+            'content' => [
+                'title'       => 'Peminjaman',
+                'description' => 'Informasi mengenai peminjaman fasilitas.',
+                // Add more fields as necessary
+            ]
+        ]);
+    }
+
+    public static function getItemFallbacks(): object
+    {
+        return self::createSafeStructure([
+            'content' => [
+                'title'       => 'Item',
+                'description' => 'Informasi mengenai item.',
+                // Add more fields as necessary
             ]
         ]);
     }

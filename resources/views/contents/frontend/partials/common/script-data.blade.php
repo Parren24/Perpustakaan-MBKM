@@ -27,6 +27,12 @@
 <script src="{{ asset('theme/frontend/js/jquery.mb.YTPlayer.min.js') }}"></script>
 {{-- Wow js file --}}
 <script src="{{ asset('theme/frontend/js/wow.js') }}"></script>
+{{-- HTML5 QR Code Library for Scanner --}}
+<script src="{{ asset('theme/frontend/js/html5-qrcode.min.js') }}"></script>
 {{-- Main Custom js file --}}
 <script src="{{ asset('theme/frontend/js/function.js') }}"></script>
+
+<script src="{{ asset('theme/frontend/js/QRCode.min.js') }}"></script>
+
+
 

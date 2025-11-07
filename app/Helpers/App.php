@@ -101,3 +101,10 @@ if (!function_exists('publicMedia')) {
         }
     }
 }
+
+function errResponse($code,$message){
+    return response()->json([
+        'status' => 'error',
+        'message' => 'Terjadi kesalahan sistem. Silakan coba lagi.'
+    ], 500);
+}

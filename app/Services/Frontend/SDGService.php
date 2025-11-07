@@ -24,7 +24,7 @@ class SDGService
             'description' => 'Politeknik Caltex Riau berkomitmen untuk mendukung pembangunan berkelanjutan melalui pendidikan inovatif, riset unggulan, dan praktik ramah lingkungan. Kami percaya bahwa kolaborasi antara ilmu pengetahuan, teknologi, dan kesadaran sosial dapat menciptakan masa depan yang lebih hijau dan inklusif. Mari bersama-sama membangun dunia yang lebih baik!',
             // 'cta' => [
             //     'text' => 'Pelajari Lebih Lanjut',
-            //     'url' => '#', // TODO: Add actual URL
+            //     'url' => '', // TODO: Add actual URL
             //     'class' => 'btn-default'
             // ]
         ];

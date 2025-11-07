@@ -52,10 +52,10 @@ class BiblioController extends Controller
                 Column::make(['width' => '80px', 'title' => '', 'data' => 'action', 'orderable' => false, 'searchable' => false, 'className' => 'text-center']),
                 Column::make(['width' => '50px', 'title' => 'No', 'data' => 'DT_RowIndex', 'orderable' => false, 'searchable' => false, 'className' => 'text-center']),
                 Column::make(['title' => 'Judul', 'data' => 'title']),
-                Column::make(['title' => 'Penulis', 'data' => 'author']),
-                Column::make(['width' => '100px', 'title' => 'Tahun', 'data' => 'year', 'className' => 'text-center']),
-                Column::make(['title' => 'Penerbit', 'data' => 'publisher']),
-                Column::make(['width' => '80px', 'title' => 'Stok', 'data' => 'stock', 'className' => 'text-center']),
+                Column::make(['title' => 'Penulis', 'data' => 'author_name']),
+                Column::make(['width' => '100px', 'title' => 'Tahun', 'data' => 'publish_year', 'className' => 'text-center']),
+                Column::make(['title' => 'Penerbit', 'data' => 'publisher_name']),
+                Column::make(['width' => '80px', 'title' => 'Stok', 'data' => 'total_items', 'className' => 'text-center']),
             ]);
 
         $this->dataView([
@@ -282,6 +282,15 @@ class BiblioController extends Controller
             return DataTables::of($query)
                 // Creates the 'no' column automatically, handling pagination.
                 ->addIndexColumn()
+
+                 ->addColumn('author_name', function ($row) {
+                    return $row->authors->pluck('author_name')->implode(', ');
+                })
+                // Add publisher_name column
+                ->addColumn('publisher_name', function ($row) {
+                    return $row->publisher ? $row->publisher->publisher_name : '-';
+                })
+                
                 // Creates the 'action' column.
                 ->addColumn('action', function ($row) {
                     $id = encid($row->biblio_id);

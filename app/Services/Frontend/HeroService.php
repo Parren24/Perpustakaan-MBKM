@@ -71,7 +71,7 @@ class HeroService
         return [
             [
                 'text'   => 'Profil PCR',
-                'url'    => 'https://youtu.be/D4HdqnHSQ0o?si=_Aw2ZtYIXAxTV_Ua',
+                'url'    => route('frontend.biblio.index'),
                 'class'  => 'btn-default btn-highlighted btn-play',
                 'target' => '_blank',
                 'type'   => 'video'
@@ -140,7 +140,7 @@ class HeroService
                     'src'      => publicMedia('welcome-riset.webp'),
                     'duration' => 24 // 24 seconds video, 8 seconds per title
                 ],
-                'cta'          => [],
+                'cta'          => self::getDefaultCTA(),
                 'social_media' => true
             ]
         ];

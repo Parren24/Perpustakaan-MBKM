@@ -14,6 +14,8 @@ use App\Http\Controllers\Frontend\PCRSquadController;
 use App\Http\Controllers\Frontend\ProfileController;
 use App\Http\Controllers\Frontend\ResearchController;
 use App\Http\Controllers\Frontend\ServiceController;
+use App\Http\Controllers\Frontend\BiblioController;
+use App\Http\Controllers\Frontend\ItemController;
 use Illuminate\Support\Facades\Route;
 
 Route::get(
@@ -80,6 +82,32 @@ Route::name('frontend.')->group(function () {
     Route::prefix('/berita')->name('news.')->controller(NewsController::class)->group(function () {
         Route::get("/", 'index')->name('index');
         Route::get('/{newsId}', 'show')->name('show');
+    });
+
+    Route::prefix('/biblio')->name('biblio.')->controller(BiblioController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('/item/{item_code}', 'getItemInformation')->name('item-info');
+        Route::post('/authorize-session', 'authorizeSession')->name('authorize-session');
+        Route::post('/add-to-cart', 'addBookToCartLoan')->name('add-to-cart');
+        Route::get('/cart-items', 'getCartItems')->name('cart-items');
+        Route::delete('/cart-item', 'removeFromCart')->name('remove-from-cart');
+        Route::delete('/cart-clear', 'clearCart')->name('clear-cart');
+        Route::post('/complete-loan', 'completeLoan')->name('complete-loan');
+        
+        // Mobile pages routes (no auth required for confirmation)
+        Route::get('/konfirmasi/{token}', 'showConfirmation')->name('confirmation');
+        
+        // Routes that require biblio session
+        Route::middleware(['web', 'session'])->group(function () {
+            Route::get('/scan-buku', 'showScanBook')->name('scan-book');
+            Route::get('/keranjang', 'showCart')->name('cart');
+        });
+    });
+
+    Route::prefix('/item')->name('item.')->controller(ItemController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::post('/borrow-item', 'borrowItem')->name('borrow-item');
+        Route::post('/initiateUserToken', 'initiateUserToken')->name('initiate-user-token');
     });
 
     Route::prefix('/artikel')->name('articles.')->controller(ArticleController::class)->group(function () {
