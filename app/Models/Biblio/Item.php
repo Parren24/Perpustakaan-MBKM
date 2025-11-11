@@ -161,4 +161,10 @@ class Item extends Model
             return 'Error loading price';
         }
     }
+
+    public static function getItemCode($itemCode)
+    {
+        return self::where('item_code', $itemCode)->first();
+    }
+
 }

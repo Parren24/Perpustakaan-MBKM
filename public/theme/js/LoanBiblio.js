@@ -14,6 +14,11 @@ const errorResultDiv = document.getElementById('errorResult');
 const loadingIndicator = document.getElementById('loadingIndicator');
 const bookDetailsDiv = document.getElementById('bookDetails');
 const errorMessageDiv = document.getElementById('errorMessage');
+const header_data = {
+    'Content-Type': 'application/json',
+    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+    'Accept': 'application/json'
+}
 
 // Function called when QR code is successfully scanned
 function onScanSuccess(decodedText, decodedResult) {
@@ -42,12 +47,12 @@ function onScanSuccess(decodedText, decodedResult) {
     // document.getElementById('resetBtn').style.display = 'inline-block';
 
     // Handle berbeda berdasarkan mode scan
-    if (scanMode === 'user') {
+    if (!userAuthorized) {
         // Mode scan QR user untuk authorize session
         console.log('Authorizing user session with token:', decodedText);
         authorizeUserSession(decodedText); // Fungsi ini akan fetch ke /authorize-session
 
-    } else if (scanMode === 'book') {
+    } else if (userAuthorized) {
         // Mode scan barcode buku
         console.log('Getting book details for item:', decodedText);
         getBookDetailsAndAddToCart(decodedText); // Fungsi ini akan fetch ke /item/... dan /add-to-cart
@@ -62,17 +67,13 @@ function onScanSuccess(decodedText, decodedResult) {
 // Step 1: Get book details first
 fetch(`/biblio/item/${decodedText}`, {
     method: 'GET',
-    headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-        'Accept': 'application/json'
-    }
+    headers: header_data
 })
     .then(response => response.json())
     .then(data => {
         console.log('Book details response:', data);
 
-        if (data.success) {
+        if (data.status) {
             // Show book details
             showBookDetails(data.data);
             bookResultDiv.style.display = 'block';
@@ -82,11 +83,7 @@ fetch(`/biblio/item/${decodedText}`, {
                 console.log('Adding book to cart:', decodedText);
                 return fetch(`/biblio/add-to-cart`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                        'Accept': 'application/json'
-                    },
+                    headers: header_data,
                     body: JSON.stringify({
                         item_code: decodedText
                     })
@@ -119,12 +116,12 @@ fetch(`/biblio/item/${decodedText}`, {
         console.log('Add to cart response data:', data);
         hideLoading();
 
-        if (data.success) {
+        if (data.status) {
             // Tampilkan pesan sukses dan info cart
             showCartSuccess(data.data, decodedText);
         } else {
             console.error('Backend returned error:', data);
-            showError(data.error || 'Gagal menambahkan buku ke keranjang.');
+            showError(data.message || 'Gagal menambahkan buku ke keranjang.');
         }
     })
     .catch(error => {
@@ -145,11 +142,7 @@ fetch(`/biblio/item/${decodedText}`, {
 function authorizeUserSession(token) {
     fetch('/biblio/authorize-session', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-            'Accept': 'application/json'
-        },
+        headers: header_data,
         body: JSON.stringify({
             token: token
         })
@@ -160,7 +153,7 @@ function authorizeUserSession(token) {
             return response.json().then(data => {
                 if (!response.ok) {
                     // Jika response tidak OK, lempar error dengan pesan dari backend
-                    throw new Error(data.error || data.message || `HTTP error! status: ${response.status}`);
+                    throw new Error(data.message || data.error || `HTTP error! status: ${response.status}`);
                 }
                 return data;
             });
@@ -170,7 +163,7 @@ function authorizeUserSession(token) {
 
             console.log('Authorization response:', data);
 
-            if (data.success) {
+            if (data.status) {
                 userAuthorized = true;
                 scanMode = 'book';
 
@@ -184,7 +177,7 @@ function authorizeUserSession(token) {
                 loadAndDisplayCart();
             } else {
                 console.error('Authorization failed:', data);
-                showError(data.error || 'Gagal melakukan otorisasi. Silakan scan ulang QR code.');
+                showError(data.message || 'Gagal melakukan otorisasi. Silakan scan ulang QR code.');
             }
         })
         .catch(error => {
@@ -200,17 +193,13 @@ function getBookDetailsAndAddToCart(itemCode) {
     // Step 1: Get book details first
     fetch(`/biblio/item/${itemCode}`, {
         method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-            'Accept': 'application/json'
-        }
+        headers: header_data
     })
         .then(response => response.json())
         .then(data => {
             console.log('Book details response:', data);
 
-            if (data.success) {
+            if (data.status) {
                 // Show book details
                 showBookDetails(data.data);
                 bookResultDiv.style.display = 'block';
@@ -220,11 +209,7 @@ function getBookDetailsAndAddToCart(itemCode) {
                     console.log('Adding book to cart:', itemCode);
                     return fetch('/biblio/add-to-cart', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                            'Accept': 'application/json'
-                        },
+                        headers: header_data,
                         body: JSON.stringify({
                             item_code: itemCode
                         })
@@ -248,7 +233,7 @@ function getBookDetailsAndAddToCart(itemCode) {
             return response.json().then(data => {
                 if (!response.ok) {
                     // Jika response tidak OK, lempar error dengan pesan dari backend
-                    throw new Error(data.error || data.message || `HTTP error! status: ${response.status}`);
+                    throw new Error(data.message || data.error || `HTTP error! status: ${response.status}`);
                 }
                 return data;
             });
@@ -259,7 +244,7 @@ function getBookDetailsAndAddToCart(itemCode) {
             console.log('Add to cart response data:', data);
             hideLoading();
 
-            if (data.success) {
+            if (data.status) {
                 // Show success message and updated cart
                 showCartSuccess(data.data, itemCode);
 
@@ -271,7 +256,7 @@ function getBookDetailsAndAddToCart(itemCode) {
                 }, 5000);
             } else {
                 console.error('Backend returned error:', data);
-                showError(data.error || 'Gagal menambahkan buku ke keranjang.');
+                showError(data.message || 'Gagal menambahkan buku ke keranjang.');
             }
         })
         .catch(error => {
@@ -462,17 +447,14 @@ function loadAndDisplayCart() {
 
     fetch('/biblio/cart-items', {
         method: 'GET',
-        headers: {
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        }
+        headers: header_data
     })
         .then(response => {
             // Parse JSON terlebih dahulu untuk mendapatkan pesan error dari backend
             return response.json().then(data => {
                 if (!response.ok) {
                     // Jika response tidak OK, lempar error dengan pesan dari backend
-                    throw new Error(data.error || data.message || `HTTP error! status: ${response.status}`);
+                    throw new Error(data.message || data.error || `HTTP error! status: ${response.status}`);
                 }
                 return data;
             });
@@ -480,12 +462,12 @@ function loadAndDisplayCart() {
         .then(data => {
             hideLoading();
 
-            if (data.success) {
+            if (data.status) {
                 // Display cart even if empty
                 displayCartOnly(data.data);
             } else {
                 console.error('Error loading cart:', data);
-                showError(data.error || 'Gagal memuat keranjang');
+                showError(data.message || 'Gagal memuat keranjang');
             }
         })
         .catch(error => {
@@ -832,7 +814,7 @@ function removeFromCartKiosk(itemCode) {
             return response.json().then(data => {
                 if (!response.ok) {
                     // Jika response tidak OK, lempar error dengan pesan dari backend
-                    throw new Error(data.error || data.message || `HTTP error! status: ${response.status}`);
+                    throw new Error(data.message || data.error || `HTTP error! status: ${response.status}`);
                 }
                 return data;
             });
@@ -840,7 +822,7 @@ function removeFromCartKiosk(itemCode) {
         .then(data => {
             hideLoading();
 
-            if (data.success) {
+            if (data.status) {
                 if (data.data.total_items > 0) {
                     // Still have items, reload cart display
                     displayCartOnly(data.data);
@@ -865,7 +847,7 @@ function removeFromCartKiosk(itemCode) {
                     displayCartOnly(data.data);
                 }
             } else {
-                showError(data.error || 'Gagal menghapus buku dari keranjang');
+                showError(data.message || 'Gagal menghapus buku dari keranjang');
             }
         })
         .catch(error => {
@@ -895,7 +877,7 @@ function processFinalCheckout() {
             return response.json().then(data => {
                 if (!response.ok) {
                     // Jika response tidak OK, lempar error dengan pesan dari backend
-                    throw new Error(data.error || data.message || `HTTP error! status: ${response.status}`);
+                    throw new Error(data.message || data.error || `HTTP error! status: ${response.status}`);
                 }
                 return data;
             });
@@ -903,10 +885,10 @@ function processFinalCheckout() {
         .then(data => {
             hideLoading();
 
-            if (data.success) {
+            if (data.status) {
                 showFinalSuccess(data.data);
             } else {
-                showError(data.error || 'Gagal memproses peminjaman');
+                showError(data.message || 'Gagal memproses peminjaman');
             }
         })
         .catch(error => {

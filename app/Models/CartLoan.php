@@ -190,5 +190,11 @@ class CartLoan extends Model
             ->whereNull('a.deleted_at');
         return $get ? $query->get() : $query;
     }
+
+    public static function getMemberIdInCart($memberId)
+    {
+        return static::where('member_id', $memberId)->first();
+    }
 }
 /* This model generate by @wahyudibinsaid laravel best practices snippets */
+

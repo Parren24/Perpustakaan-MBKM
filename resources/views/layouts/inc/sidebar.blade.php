@@ -8,7 +8,12 @@
         <x-theme.menu link="{{ route('app.dashboard.index') }}" text="Dashboard" icon="ki-outline ki-graph-up" :active="$pageData->activeMenu == 'dashboard'" />
 
         <x-theme.menu link="{{ route('app.biblio.index') }}" text="Biblio" icon="ki-outline ki-book" :active="$pageData->activeMenu == 'biblio'" />
-        <x-theme.menu link="{{ route('app.user.index') }}" text="User" icon="ki-outline ki-user" :active="$pageData->activeMenu == 'user'" />
+        
+        <x-theme.menu text="User Management" icon="ki-outline ki-user" :active="in_array($pageData->activeMenu, ['user', 'user-token'])">
+            <x-theme.submenu link="{{ route('app.user.index') }}" text="Kelola User" :active="$pageData->activeMenu == 'user'" />
+            <x-theme.submenu link="{{ route('app.user.show', ['param1' => 'token']) }}" text="Token Peminjaman" :active="$pageData->activeMenu == 'user-token'" />
+        </x-theme.menu>
+        
         <x-theme.menu link="{{ route('app.roles.index') }}" text="Roles & Permissions" icon="ki-outline ki-lock" :active="$pageData->activeMenu == 'roles'" />
 
         <div class="separator separator-dashed border-gray-10 my-2"></div>

@@ -291,4 +291,37 @@ class Biblio extends Model
 
         return $query;
     }
+
+    public static function getBiblioInformation($biblioId)
+    {
+        return DB::connection('mysql_opac')
+            ->table('biblio')
+            ->where('biblio_id', $biblioId)
+            ->first();
+    }
+
+    public static function getAuthorRecords($biblioId)
+    {
+        return DB::connection('mysql_opac')
+            ->table('mst_author as a')
+            ->join('biblio_author as ba', 'a.author_id', '=', 'ba.author_id')
+            ->where('ba.biblio_id', $biblioId)
+            ->get(['author_name']);
+    }
+
+    public static function getPublisherName($publisherId)
+    {
+        return DB::connection('mysql_opac')
+            ->table('mst_publisher')
+            ->where('publisher_id', $publisherId)
+            ->first(['publisher_name']);
+    }
+
+    public static function getMemberId($nomor_induk)
+    {
+        return DB::connection('mysql_opac')
+            ->table('member')
+            ->where('member_id', $nomor_induk)
+            ->first();
+    }
 }

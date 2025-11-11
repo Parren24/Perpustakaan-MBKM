@@ -21,6 +21,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 class UserController extends Controller
 {
@@ -31,7 +34,7 @@ class UserController extends Controller
          */
         $this->activeRoot   = '';
         $this->breadCrump[] = ['title' => '', 'link' => url('')];
-        $this->middleware('permission:user-list', ['only' => ['index', 'data']]);
+        $this->middleware('permission:user-list', ['only' => ['index']]);
         $this->middleware('permission:user-create', ['only' => ['store']]);
         $this->middleware('permission:user-edit', ['only' => ['update']]);
         $this->middleware('permission:user-delete', ['only' => ['destroy']]);
@@ -75,6 +78,15 @@ class UserController extends Controller
 
     public function show($param1 = '', $param2 = '')
     {
+        if ($param1 == 'token') {
+            $this->title        = 'Token Peminjaman';
+            $this->activeMenu   = 'user-token';
+            $this->breadCrump[] = ['title' => 'Token Peminjaman', 'link' => url()->current()];
+
+            $this->dataView([]);
+            return $this->view('admin.user.token');
+        }
+
         // if ($param1 == 'form') {
         //     $this->title        = 'Form Pengguna';
         //     $this->activeMenu   = 'user';
@@ -157,6 +169,10 @@ class UserController extends Controller
 
     function data(Request $req, $param1 = ''): JsonResponse
     {
+        if ($param1 == 'initiate-token') {
+            return $this->initiateUserToken();
+        }
+
         if ($param1 == 'list') {
             $query = User::with('roles');
 
@@ -196,7 +212,74 @@ class UserController extends Controller
             }
         }
 
+        if ($param1 == 'initiate-token') {
+            return $this->initiateUserToken();
+        }
+
         abort(404, 'Data tidak ditemukan');
     }
+
+    public function initiateUserToken()
+    {
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Anda harus login terlebih dahulu untuk meminjam buku.'
+            ], 401);
+        }
+
+        // Debug info
+        Log::info('initiateUserToken called', [
+            'user_id' => $user->id,
+            'user_name' => $user->name,
+            'nomor_induk' => $user->nomor_induk
+        ]);
+
+        // Pastikan user punya nomor_induk
+        if (empty($user->nomor_induk)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Nomor induk user belum diatur. Hubungi administrator.'
+            ], 400);
+        }
+
+        // Generate unique token
+        $token = Str::uuid()->toString();
+
+        // Simpan data sesi di cache selama 10 menit
+        $cacheKey = 'user_token_' . $token;
+        Cache::put($cacheKey, [
+            'user_id'   => $user->id,
+            'name'      => $user->name,
+            'nomor_induk' => $user->nomor_induk
+        ], now()->addMinutes(10));
+
+        $verifyToken = cache()->get($cacheKey);
+        if (!$verifyToken) {
+            Log::error('Failed to store token in cache', ['token' => $token]);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal menyimpan token. Silakan coba lagi.'
+            ], 500);
+        }
+
+        Log::info('Token generated successfully', [
+            'token' => substr($token, 0, 10) . '...',
+            'cache_key' => $cacheKey
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Token peminjaman berhasil dibuat.',
+            'token' => $token,
+            'expires_in' => 600, // 10 menit dalam detik
+            'expiration' => now()->addMinutes(10)->toDateTimeString()
+        ], 200);
+    }
+
+    
+
 }
 /* This controller generate by @wahyudibinsaid laravel best practices snippets */

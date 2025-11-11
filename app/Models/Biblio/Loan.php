@@ -5,11 +5,12 @@ namespace App\Models\Biblio;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class Loan extends Model
 {
     use HasFactory;
-    
+
     protected $connection = 'mysql_opac';
     protected $table = 'loan';
     protected $primaryKey = 'loan_id';
@@ -98,7 +99,7 @@ class Loan extends Model
     public function scopeOverdue($query)
     {
         return $query->where('due_date', '<', now())
-                    ->where('is_return', 0);
+            ->where('is_return', 0);
     }
 
     /**
@@ -163,5 +164,60 @@ class Loan extends Model
         $this->attributes['return_date'] = $value;
         $this->attributes['is_return'] = 1;
         $this->attributes['last_update'] = now();
+    }
+
+    public static function existingLoan($itemCode, $memberData)
+    {
+        return DB::connection('mysql_opac')
+            ->table('loan')
+            ->where('member_id', $memberData)
+            ->where('item_code', $itemCode)
+            ->where('is_return', 0)
+            ->first();
+    }
+
+    public static function activeLoanCount($memberData)
+    {
+        return DB::connection('mysql_opac')
+            ->table('loan')
+            ->where('member_id', $memberData)
+            ->where('is_return', 0)
+            ->count();
+    }
+
+    public static function InsertDataTableLoan($cartItems, $memberData , $duedate)
+    {
+        return DB::connection('mysql_opac')->table('loan')->insertGetId([
+            'member_id' => $memberData,
+            'item_code' => $cartItems,
+            'loan_date' => Carbon::now(),
+            'due_date' => $duedate,
+            'renewed' => 0,
+            'is_lent' => 1,
+            'is_return' => 0,
+            'input_date' => Carbon::now(),
+            'last_update' => Carbon::now(),
+        ]);
+    }
+
+    public static function getMemberActiveLoans($memberId)
+    {
+        return DB::connection('mysql_opac')
+            ->table('loan')
+            ->select([
+                    'loan.loan_id',
+                    'loan.item_code',
+                    'loan.loan_date',
+                    'loan.due_date',
+                    'loan.renewed',
+                    'biblio.title',
+                    'biblio.sor as author'
+                ])
+                ->leftJoin('item', 'loan.item_code', '=', 'item.item_code')
+                ->leftJoin('biblio', 'item.biblio_id', '=', 'biblio.biblio_id')
+                ->where('loan.member_id', $memberId)
+                ->where('loan.is_return', 0)
+                ->orderBy('loan.loan_date', 'desc')
+                ->get();
     }
 }

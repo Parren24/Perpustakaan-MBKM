@@ -5,6 +5,7 @@ namespace App\Services\Frontend;
 use App\Services\Frontend\SiteIdentityService;
 use App\Models\Biblio\Item;
 use App\Models\Biblio\Biblio;
+use App\Models\Biblio\Loan;
 use App\Models\CartLoan;
 use Illuminate\Auth\Middleware\Authorize;
 use Illuminate\Support\Str;
@@ -22,7 +23,7 @@ class BiblioService
      * 
      * @return object
      */
-    public static function getContenta(): object
+    public static function getContent(): object
     {
         $identity = SiteIdentityService::getSiteIdentity();
 
@@ -35,7 +36,7 @@ class BiblioService
         ];
     }
 
-    public static function getMetaDataa(): array
+    public static function getMetaData(): array
     {
         $content = self::getContent();
         return [
@@ -45,7 +46,7 @@ class BiblioService
         ];
     }
 
-    public static function getPageConfiga(): array
+    public static function getPageConfig(): array
     {
         $meta = self::getMetaData();
         $bg   = publicMedia('peminjaman-bg.webp');
@@ -65,7 +66,7 @@ class BiblioService
         ];
     }
 
-    public static function getStructuredDataa($bg): array
+    public static function getStructuredData($bg): array
     {
         $identy      = SiteIdentityService::getSiteIdentity();
         $contactInfo = SiteIdentityService::getContactInfo();
@@ -92,7 +93,7 @@ class BiblioService
         ];
     }
 
-    public static function getBreadcrumbStructuredDataa(): array
+    public static function getBreadcrumbStructuredData(): array
     {
         return [
             '@context'        => 'https://schema.org',
@@ -117,36 +118,17 @@ class BiblioService
     public static function getBiblioInformation($item_code)
     {
         try {
-            Log::info('Looking for item with code: ' . $item_code);
 
             // Validate input
             if (empty($item_code)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Kode item tidak boleh kosong.'
-                ], 400);
+                return errResponse(400, 'Kode item tidak boleh kosong.');
             }
 
-            // Test database connection first
-            // try {
-            //     DB::connection('mysql_opac')->getPdo();
-            //     Log::info('Database OPAC connection successful');
-            // } catch (\Exception $e) {
-            //     Log::error('Database OPAC connection failed: ' . $e->getMessage());
-            //     return response()->json([
-            //         'success' => false,
-            //         'message' => 'Koneksi database gagal. Silakan coba lagi nanti.'
-            //     ], 500);
-            // }
-
             // Ambil item dengan data lengkap menggunakan Eloquent
-            $itemDetails = Item::where('item_code', $item_code)->first();
+            $itemDetails = Item::getItemCode($item_code);
 
             if (!$itemDetails) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Buku dengan kode item "' . $item_code . '" tidak ditemukan di database.'
-                ], 404);
+                return errResponse(404, 'Buku dengan kode item "' . $item_code . '" tidak ditemukan di database.');
             }
 
             Log::info('Item found via Eloquent: ', ['item_id' => $itemDetails->item_id]);
@@ -174,39 +156,26 @@ class BiblioService
 
                 if ($itemDetails->biblio_id) {
                     // Query simple dulu untuk mendapatkan biblio basic info
-                    $biblioInfo = DB::connection('mysql_opac')
-                        ->table('biblio')
-                        ->where('biblio_id', $itemDetails->biblio_id)
-                        ->first();
 
-                    Log::info('Biblio query result', [
-                        'biblio_id' => $itemDetails->biblio_id,
-                        'found' => $biblioInfo ? 'YES' : 'NO'
-                    ]);
+                    $biblioInfo = Biblio::getBiblioInformation($itemDetails->biblio_id);
 
                     // Coba ambil author dari tabel terpisah jika ada
                     $authors = [];
                     try {
-                        $authorRecords = DB::connection('mysql_opac')
-                            ->table('mst_author')
-                            ->join('biblio_author', 'mst_author.author_id', '=', 'biblio_author.author_id')
-                            ->where('biblio_author.biblio_id', $itemDetails->biblio_id)
-                            ->get(['author_name']);
+
+                        $authorRecords = Biblio::getAuthorRecords($itemDetails->biblio_id);
 
                         $authors = $authorRecords->pluck('author_name')->toArray();
-                        Log::info('Authors found: ' . count($authors));
                     } catch (\Exception $authorError) {
-                        Log::warning('Author table not found or error: ' . $authorError->getMessage());
+
                     }
 
                     // Coba ambil publisher dari tabel terpisah jika ada
                     $publisherName = 'N/A';
                     try {
                         if (!empty($biblioInfo->publisher_id)) {
-                            $publisher = DB::connection('mysql_opac')
-                                ->table('mst_publisher')
-                                ->where('publisher_id', $biblioInfo->publisher_id)
-                                ->first(['publisher_name']);
+
+                            $publisher = Biblio::getPublisherName($biblioInfo->publisher_id);
 
                             $publisherName = $publisher ? $publisher->publisher_name : 'N/A';
                         }
@@ -234,14 +203,8 @@ class BiblioService
                         'publisher' => 'N/A',
                         'publish_year' => 'N/A',
                     ];
-                    Log::warning('No biblio information found for item: ' . $item_code);
                 }
             } catch (\Exception $biblioError) {
-                Log::error('Error fetching biblio info: ' . $biblioError->getMessage(), [
-                    'item_code' => $item_code,
-                    'biblio_id' => $itemDetails->biblio_id ?? null,
-                    'trace' => $biblioError->getTraceAsString()
-                ]);
                 $responseData['biblio'] = [
                     'title' => 'Item: ' . $item_code,
                     'author' => 'Error loading info: ' . $biblioError->getMessage(),
@@ -250,65 +213,31 @@ class BiblioService
                     'publish_year' => 'N/A',
                 ];
             }
-            return response()->json([
-                'success' => true,
-                'data' => $responseData,
-                'expires_in' => 180, // 3 menit dalam detik
-                'message' => 'Data Buku ditemukan.'
-            ]);
+
+            return successResponse($responseData, 'Data Buku ditemukan.');
         } catch (\Illuminate\Database\QueryException $e) {
-            Log::error('Database query error in getBiblioInformation: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Terjadi kesalahan pada database. Silakan coba lagi.',
-                'debug' => config('app.debug') ? $e->getMessage() : null
-            ], 500);
+            return errResponse(500, 'Terjadi kesalahan pada database. Silakan coba lagi.');
         } catch (\Exception $e) {
-            Log::error('General error in getBiblioInformation: ' . $e->getMessage(), [
-                'item_code' => $item_code,
-                'trace' => $e->getTraceAsString()
-            ]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Terjadi kesalahan saat mencari data buku.',
-                'debug' => config('app.debug') ? $e->getMessage() : null
-            ], 500);
+            return errResponse(500, 'Terjadi kesalahan saat mencari data buku.');
         }
     }
 
     public static function authorizeSession($request)
     {
         try {
-            Log::info('authorizeSession: Method started');
-
             $token = $request->input('token');
 
             if (!$token) {
-                Log::warning('authorizeSession: Empty token provided');
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Token tidak boleh kosong.'
-                ], 400);
+                return errResponse(400, 'Token tidak boleh kosong.');
             }
-
-            Log::info('authorizeSession: Processing token', ['token' => substr($token, 0, 10) . '...']);
-
             // Ambil session data dari cache (tidak menggunakan pull agar bisa dicek lagi)
             $cacheKey = 'user_token_' . $token;
             $sessionData = Cache::get($cacheKey);
 
-            Log::info('authorizeSession: Cache lookup result', [
-                'cache_key' => $cacheKey,
-                'data_exists' => $sessionData ? 'YES' : 'NO',
-                'data_structure' => $sessionData ? array_keys($sessionData) : 'NULL'
-            ]);
-
             if (!$sessionData) {
                 Log::warning('Invalid or expired token used', ['token' => substr($token, 0, 10) . '...']);
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Token tidak valid atau telah kedaluwarsa.'
-                ], 400);
+
+                return errResponse(400, 'Token tidak valid atau telah kedaluwarsa.');
             }
 
             // Validasi struktur data session
@@ -324,76 +253,42 @@ class BiblioService
             // }
 
             // Test database connection first
-            try {
-                DB::connection('mysql_opac')->getPdo();
-                Log::info('authorizeSession: Database OPAC connection successful');
-            } catch (\Exception $e) {
-                Log::error('authorizeSession: Database OPAC connection failed', ['error' => $e->getMessage()]);
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Koneksi database gagal. Silakan coba lagi nanti.'
-                ], 500);
-            }
+            // try {
+            //     DB::connection('mysql_opac')->getPdo();
+            //     Log::info('authorizeSession: Database OPAC connection successful');
+            // } catch (\Exception $e) {
+            //     Log::error('authorizeSession: Database OPAC connection failed', ['error' => $e->getMessage()]);
+
+            //     return errResponse(500, 'Koneksi database gagal. Silakan coba lagi nanti.');
+            // }
 
             // Validasi member di database OPAC
             Log::info('authorizeSession: Looking for member', ['nomor_induk' => $sessionData['nomor_induk']]);
 
-            $member = DB::connection('mysql_opac')
-                ->table('member')
-                ->where('member_id', $sessionData['nomor_induk'])
-                ->first();
-
-            Log::info('authorizeSession: Member query result', [
-                'member_id' => $sessionData['nomor_induk'],
-                'member_found' => $member ? 'YES' : 'NO',
-                'member_data' => $member ? ['id' => $member->member_id ?? 'N/A', 'name' => $member->member_name ?? 'N/A'] : 'NULL'
-            ]);
+            $member = Biblio::getMemberId($sessionData['nomor_induk']);
 
             if (!$member) {
-                Log::warning('Member not found or inactive', ['nomor_induk' => $sessionData['nomor_induk']]);
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Member tidak ditemukan atau tidak aktif.'
-                ], 404);
+                return errResponse(404, 'Member tidak ditemukan atau tidak aktif.');
             }
 
             // Cek status peminjaman member
-            Log::info('authorizeSession: About to get member loan info', ['nomor_induk' => $sessionData['nomor_induk']]);
             try {
                 $loanInfo = self::getMemberLoanInfo($sessionData['nomor_induk']);
-                Log::info('authorizeSession: Loan info success', ['loan_info_keys' => array_keys($loanInfo)]);
             } catch (\Exception $e) {
-                Log::error('authorizeSession: Error getting loan info', [
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                    'nomor_induk' => $sessionData['nomor_induk']
-                ]);
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Gagal mengambil informasi peminjaman member: ' . $e->getMessage()
-                ], 500);
+                return errResponse(500, 'Gagal mengambil informasi peminjaman member: ' . $e->getMessage());
             }
 
             // Cek apakah ada pinjaman yang overdue
             if (isset($loanInfo['overdue_count']) && $loanInfo['overdue_count'] > 0) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Anda memiliki ' . $loanInfo['overdue_count'] . ' buku yang terlambat dikembalikan. Silakan kembalikan terlebih dahulu.',
-                    'overdue_books' => $loanInfo['overdue_loans'] ?? []
-                ], 403);
+                return errResponse(403, 'Anda memiliki ' . $loanInfo['overdue_count'] . ' buku yang terlambat dikembalikan. Silakan kembalikan terlebih dahulu.');
             }
 
             // Cek apakah masih bisa meminjam
             if (isset($loanInfo['can_borrow']) && !$loanInfo['can_borrow']) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Anda sudah mencapai batas maksimal peminjaman harap dikembalikan terlebih dahulu(2 buku).',
-                    'loan_info' => $loanInfo
-                ], 403);
+                return errResponse(403, 'Anda sudah mencapai batas maksimal peminjaman harap dikembalikan terlebih dahulu(2 buku).');
             }
 
             // Set session untuk biblio user
-            Log::info('authorizeSession: About to set session');
             try {
                 Session::put('biblio_user', [
                     'user_id' => $sessionData['user_id'],
@@ -409,23 +304,17 @@ class BiblioService
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString()
                 ]);
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Gagal menyimpan session: ' . $e->getMessage()
-                ], 500);
+
+                return errResponse(500, 'Gagal menyimpan session: ' . $e->getMessage());
             }
 
-            // // Hapus token dari cache untuk keamanan (one-time use)
-            // Log::info('authorizeSession: About to forget cache token');
-            // try {
-            //     Cache::forget($cacheKey);
-            //     Log::info('authorizeSession: Cache token forgotten successfully');
-            // } catch (\Exception $e) {
-            //     Log::warning('authorizeSession: Error forgetting cache token', ['error' => $e->getMessage()]);
-            //     // Don't fail the whole process for this
-            // }
-
-            Log::info('authorizeSession: About to return success response');
+            // Hapus token dari cache untuk keamanan (one-time use)
+            try {
+                Cache::forget($cacheKey);
+            } catch (\Exception $e) {
+                Log::warning('authorizeSession: Error forgetting cache token', ['error' => $e->getMessage()]);
+                // Don't fail the whole process for this
+            }
 
             try {
                 $responseData = [
@@ -435,25 +324,13 @@ class BiblioService
                     'session_expires_at' => now()->addMinutes(30)->toISOString()
                 ];
 
-                Log::info('Member session authorized successfully', [
-                    'member_id' => $sessionData['nomor_induk'],
-                    'user_id' => $sessionData['user_id']
-                ]);
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Sesi berhasil diverifikasi. Silakan scan barcode buku.',
-                    'data' => $responseData
-                ], 200);
+                return successResponse($responseData, 'Sesi berhasil diverifikasi. Silakan scan barcode buku.');
             } catch (\Exception $e) {
                 Log::error('authorizeSession: Error creating response', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString()
                 ]);
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Gagal membuat response: ' . $e->getMessage()
-                ], 500);
+                return errResponse(500, 'Gagal membuat response: ' . $e->getMessage());
             }
         } catch (\Exception $e) {
             Log::error('Error in authorizeSession: ' . $e->getMessage(), [
@@ -461,10 +338,7 @@ class BiblioService
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json([
-                'success' => false,
-                'error' => 'Terjadi kesalahan saat verifikasi sesi.'
-            ], 500);
+            return errResponse(500, 'Terjadi kesalahan saat verifikasi sesi.');
         }
     }
 
@@ -474,46 +348,28 @@ class BiblioService
             // Periksa session member yang sudah ter-authorize
             $memberData = Session::get('biblio_user');
             if (!$memberData || !isset($memberData['user_id'])) {
-                Log::warning('No valid user session found for cart addition');
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Sesi user tidak valid. Silakan scan QR code user terlebih dahulu.'
-                ], 401);
+                return errResponse(401, 'Sesi user tidak valid. Silakan scan QR code user terlebih dahulu.');
             }
 
             // Validasi session harus punya nomor_induk (sudah ter-authorize)
             if (!isset($memberData['nomor_induk']) || empty($memberData['nomor_induk'])) {
-                Log::warning('User session not authorized (no nomor_induk)', ['session' => $memberData]);
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Sesi user belum ter-otorisasi. Silakan scan QR code user terlebih dahulu.'
-                ], 401);
+                return errResponse(401, 'Sesi user belum ter-otorisasi. Silakan scan QR code user terlebih dahulu.');
             }
 
             $itemCode = $request->input('item_code');
             if (!$itemCode) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Kode item tidak boleh kosong.'
-                ], 400);
+                return errResponse(400, 'Kode item tidak boleh kosong.');
             }
 
             // Cari item dengan validasi lengkap
             $itemBook = Item::with('biblio.authors')->where('item_code', $itemCode)->first();
             if (!$itemBook) {
-                Log::warning('Item not found for cart addition', ['item_code' => $itemCode]);
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Buku dengan kode "' . $itemCode . '" tidak ditemukan.'
-                ], 404);
+                return errResponse(404, 'Buku dengan kode "' . $itemCode . '" tidak ditemukan.');
             }
 
             // Cek ketersediaan buku
             if (!$itemBook->is_available) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Buku ini tidak tersedia untuk dipinjam. Status: ' . $itemBook->status_name
-                ], 409);
+                return errResponse(409, 'Buku ini tidak tersedia untuk dipinjam. Status: ' . $itemBook->status_name);
             }
 
             // Cari atau buat cart untuk member
@@ -526,36 +382,21 @@ class BiblioService
 
             // Validasi batas maksimal
             if (count($currentItems) >= 2) {
-                // return errResponse(400,'Batas maksimal 2 buku per peminjaman telah tercapai.');
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Batas maksimal 2 buku per peminjaman telah tercapai.'
-                ], 400);
+                return errResponse(400, 'Batas maksimal 2 buku per peminjaman telah tercapai.');
             }
 
             // Cek duplikasi item dalam cart
             foreach ($currentItems as $cartItem) {
                 if ($cartItem['item_code'] === $itemCode) {
-                    return response()->json([
-                        'success' => false,
-                        'error' => 'Buku ini sudah ada dalam keranjang.'
-                    ], 400);
+                    return errResponse(400, 'Buku ini sudah ada dalam keranjang.');
                 }
             }
 
             // Cek apakah user sudah meminjam item yang sama dan belum dikembalikan
-            $existingLoan = DB::connection('mysql_opac')
-                ->table('loan')
-                ->where('member_id', $memberData['nomor_induk'])
-                ->where('item_code', $itemCode)
-                ->where('is_return', 0)
-                ->exists();
+            $existingLoan = Loan::existingLoan($itemCode, $memberData['nomor_induk']);
 
             if ($existingLoan) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Anda sudah meminjam buku ini sebelumnya dan belum mengembalikannya.'
-                ], 400);
+                return errResponse(400, 'Anda sudah meminjam buku ini sebelumnya dan belum mengembalikannya.');
             }
 
             // Tambahkan item ke cart
@@ -572,31 +413,18 @@ class BiblioService
             $cart->list_item = $currentItems;
             $cart->save();
 
-            Log::info('Book added to cart successfully', [
-                'member_id' => $memberData['user_id'],
-                'item_code' => $itemCode,
-                'cart_count' => count($currentItems)
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Buku berhasil ditambahkan ke keranjang.',
-                'data' => [
-                    'cart_items' => $currentItems,
-                    'total_items' => count($currentItems),
-                    'remaining_slots' => 2 - count($currentItems)
-                ]
-            ], 200);
+            return successResponse([
+                'cart_items' => $currentItems,
+                'total_items' => count($currentItems),
+                'remaining_slots' => 2 - count($currentItems)
+            ], 'Buku berhasil ditambahkan ke keranjang.');
         } catch (\Exception $e) {
             Log::error('Error adding book to cart: ' . $e->getMessage(), [
                 'item_code' => $itemCode ?? null,
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json([
-                'success' => false,
-                'error' => 'Terjadi kesalahan saat menambahkan buku ke keranjang.'
-            ], 500);
+            return errResponse(500, 'Terjadi kesalahan saat menambahkan buku ke keranjang.');
         }
     }
 
@@ -608,30 +436,26 @@ class BiblioService
             // Validasi session member
             $memberData = Session::get('biblio_user');
             if (!$memberData || !isset($memberData['user_id'])) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Sesi member tidak valid atau telah kedaluwarsa.'
-                ], 401);
+                return errResponse(401, 'Sesi member tidak valid atau telah kedaluwarsa.');
             }
 
             // Validasi session harus sudah punya nomor_induk (ter-authorize)
             if (!isset($memberData['nomor_induk']) || empty($memberData['nomor_induk'])) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Session tidak valid. Nomor induk member tidak ditemukan.'
-                ], 401);
+                return errResponse(401, 'Sesi member belum ter-otorisasi. Silakan scan QR code user terlebih dahulu.');
             }
 
             // Ambil cart dan validasi
-            $cart = CartLoan::where('member_id', $memberData['user_id'])->first();
+            $cart = CartLoan::getMemberIdInCart($memberData['user_id']);
+
             if (!$cart || empty($cart->list_item)) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Keranjang peminjaman kosong.'
-                ], 400);
+                return errResponse(400, 'Keranjang peminjaman kosong.');
             }
 
             $cartItems = $cart->list_item;
+
+            // if (empty($cartItems)) {
+            //     return errResponse(400, 'Keranjang peminjaman kosong atau data tidak valid.');
+            // }
 
             // Validasi ulang ketersediaan semua item sebelum memproses
             $unavailableItems = [];
@@ -642,31 +466,24 @@ class BiblioService
                 }
             }
 
-            if (!empty($unavailableItems)) {
+            if ($unavailableItems) {
                 DB::rollBack();
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Beberapa buku tidak tersedia: ' . implode(', ', $unavailableItems)
-                ], 400);
+                return errResponse(400, 'Beberapa buku tidak tersedia: ' . implode(', ', $unavailableItems));
             }
 
             // Cek kembali batas maksimal peminjaman aktif
-            $activeLoanCount = DB::connection('mysql_opac')
-                ->table('loan')
-                ->where('member_id', $memberData['nomor_induk'])
-                ->where('is_return', 0)
-                ->count();
+            $activeLoanCount = Loan::activeLoanCount($memberData['nomor_induk']);
 
             if ($activeLoanCount + count($cartItems) > 2) {
                 DB::rollBack();
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Total peminjaman akan melebihi batas maksimal (2 buku).'
-                ], 400);
+                return errResponse(400, 'Total peminjaman akan melebihi batas maksimal (2 buku).');
             }
 
             $loanIds = [];
             $processedItems = [];
+            $duedate = Carbon::now()->addDays(7);
+
+            //Notes :: Tambah parameter untuk due date 
 
             // Proses setiap item dalam cart
             foreach ($cartItems as $cartItem) {
@@ -676,31 +493,15 @@ class BiblioService
                 $item->save();
 
                 // Insert ke table loan
-                $loanId = DB::connection('mysql_opac')->table('loan')->insertGetId([
-                    'item_code' => $cartItem['item_code'],
-                    'member_id' => $memberData['nomor_induk'],
-                    'loan_date' => Carbon::now(),
-                    'due_date' => Carbon::now()->addDays(7),
-                    'renewed' => 0,
-                    'is_lent' => 1,
-                    'is_return' => 0,
-                    'input_date' => Carbon::now(),
-                    'last_update' => Carbon::now(),
-                ]);
+                $loanId = Loan::InsertDataTableLoan($cartItem['item_code'], $memberData['nomor_induk'], $duedate);
 
                 $loanIds[] = $loanId;
                 $processedItems[] = [
                     'loan_id' => $loanId,
                     'item_code' => $cartItem['item_code'],
                     'title' => $cartItem['title'] ?? 'N/A',
-                    'due_date' => Carbon::now()->addDays(7)->format('d/m/Y')
+                    'due_date' => $duedate->format('d/m/Y')
                 ];
-
-                Log::info('Loan transaction created', [
-                    'loan_id' => $loanId,
-                    'member_id' => $memberData['nomor_induk'],
-                    'item_code' => $cartItem['item_code']
-                ]);
             }
 
             // Hapus cart setelah berhasil
@@ -711,17 +512,13 @@ class BiblioService
 
             DB::commit();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Transaksi peminjaman berhasil! Buku harus dikembalikan dalam 7 hari.',
-                'data' => [
-                    'loan_ids' => $loanIds,
-                    'borrowed_items' => $processedItems,
-                    'total_borrowed' => count($processedItems),
-                    'due_date' => Carbon::now()->addDays(7)->format('d/m/Y'),
-                    'return_reminder' => 'Jangan lupa mengembalikan buku tepat waktu untuk menghindari denda.'
-                ]
-            ], 200);
+            return successResponse([
+                'loan_ids' => $loanIds,
+                'borrowed_items' => $processedItems,
+                'total_borrowed' => count($processedItems),
+                'due_date' => $duedate->format('d/m/Y'),
+                'return_reminder' => 'Jangan lupa mengembalikan buku tepat waktu untuk menghindari denda.'
+            ], 'Transaksi peminjaman berhasil! Buku harus dikembalikan dalam 7 hari.');
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -730,10 +527,7 @@ class BiblioService
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json([
-                'success' => false,
-                'error' => 'Terjadi kesalahan saat memproses peminjaman. Silakan coba lagi.'
-            ], 500);
+            return errResponse(500, 'Terjadi kesalahan saat memproses peminjaman. Silakan coba lagi.');
         }
     }
 
@@ -745,30 +539,20 @@ class BiblioService
         try {
             $memberData = Session::get('biblio_user');
             if (!$memberData || !isset($memberData['user_id'])) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Sesi member tidak valid atau telah kedaluwarsa.'
-                ], 401);
+                return errResponse(401, 'Sesi member tidak valid atau telah kedaluwarsa.');
             }
 
-            $cart = CartLoan::where('member_id', $memberData['user_id'])->first();
+            $cart = CartLoan::getMemberIdInCart($memberData['user_id']);
             $items = $cart ? ($cart->list_item ?? []) : [];
 
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'cart_items' => $items,
-                    'total_items' => count($items),
-                    'remaining_slots' => 2 - count($items),
-                    'can_add_more' => count($items) < 2
-                ]
-            ], 200);
+            return successResponse([
+                'cart_items' => $items,
+                'total_items' => count($items),
+                'remaining_slots' => 2 - count($items),
+                'can_add_more' => count($items) < 2
+            ], 'Data keranjang berhasil diambil.');
         } catch (\Exception $e) {
-            Log::error('Error getting cart items: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'error' => 'Terjadi kesalahan saat mengambil data keranjang.'
-            ], 500);
+            return errResponse(500, 'Terjadi kesalahan saat mengambil data keranjang.');
         }
     }
 
@@ -780,26 +564,17 @@ class BiblioService
         try {
             $memberData = Session::get('biblio_user');
             if (!$memberData || !isset($memberData['user_id'])) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Sesi member tidak valid atau telah kedaluwarsa.'
-                ], 401);
+                return errResponse(401, 'Sesi member tidak valid atau telah kedaluwarsa.');
             }
 
             $itemCode = $request->input('item_code');
             if (!$itemCode) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Kode item tidak boleh kosong.'
-                ], 400);
+                return errResponse(400, 'Kode item tidak boleh kosong.');
             }
 
-            $cart = CartLoan::where('member_id', $memberData['user_id'])->first();
+            $cart = CartLoan::getMemberIdInCart($memberData['user_id']);
             if (!$cart) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Keranjang tidak ditemukan.'
-                ], 404);
+                return errResponse(404, 'Keranjang tidak ditemukan.');
             }
 
             $currentItems = $cart->list_item ?? [];
@@ -811,21 +586,13 @@ class BiblioService
             $cart->list_item = array_values($filteredItems);
             $cart->save();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Item berhasil dihapus dari keranjang.',
-                'data' => [
-                    'cart_items' => $cart->list_item,
-                    'total_items' => count($cart->list_item),
-                    'remaining_slots' => 2 - count($cart->list_item)
-                ]
-            ], 200);
+            return successResponse([
+                'cart_items' => $cart->list_item,
+                'total_items' => count($cart->list_item),
+                'remaining_slots' => 2 - count($cart->list_item) //notes jadikan parameter juga
+            ], 'Item berhasil dihapus dari keranjang.');
         } catch (\Exception $e) {
-            Log::error('Error removing item from cart: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'error' => 'Terjadi kesalahan saat menghapus item dari keranjang.'
-            ], 500);
+            return errResponse(500, 'Terjadi kesalahan saat menghapus item dari keranjang.');
         }
     }
 
@@ -837,27 +604,16 @@ class BiblioService
         try {
             $memberData = Session::get('biblio_user');
             if (!$memberData || !isset($memberData['user_id'])) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Sesi member tidak valid atau telah kedaluwarsa.'
-                ], 401);
+                return errResponse(401, 'Sesi member tidak valid atau telah kedaluwarsa.');
             }
 
-            $cart = CartLoan::where('member_id', $memberData['user_id'])->first();
+            $cart = CartLoan::getMemberIdInCart($memberData['user_id']);
             if ($cart) {
                 $cart->delete();
             }
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Keranjang berhasil dikosongkan.'
-            ], 200);
+            return successMessage('Keranjang berhasil dikosongkan.');
         } catch (\Exception $e) {
-            Log::error('Error clearing cart: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'error' => 'Terjadi kesalahan saat mengosongkan keranjang.'
-            ], 500);
+            return errResponse(500, 'Terjadi kesalahan saat mengosongkan keranjang.');
         }
     }
 
@@ -867,23 +623,7 @@ class BiblioService
     public static function getMemberLoanInfo($nomorInduk)
     {
         try {
-            $activeLoans = DB::connection('mysql_opac')
-                ->table('loan')
-                ->select([
-                    'loan.loan_id',
-                    'loan.item_code',
-                    'loan.loan_date',
-                    'loan.due_date',
-                    'loan.renewed',
-                    'biblio.title',
-                    'biblio.sor as author'
-                ])
-                ->leftJoin('item', 'loan.item_code', '=', 'item.item_code')
-                ->leftJoin('biblio', 'item.biblio_id', '=', 'biblio.biblio_id')
-                ->where('loan.member_id', $nomorInduk)
-                ->where('loan.is_return', 0)
-                ->orderBy('loan.loan_date', 'desc')
-                ->get();
+            $activeLoans = Loan::getMemberActiveLoans($nomorInduk);
 
             $activeLoanCount = $activeLoans->count();
             $overdueLoans = $activeLoans->filter(function ($loan) {
@@ -900,7 +640,6 @@ class BiblioService
                 'overdue_loans' => $overdueLoans
             ];
         } catch (\Exception $e) {
-            Log::error('Error getting member loan info: ' . $e->getMessage());
             return [
                 'active_loan_count' => 0,
                 'max_loan_limit' => 2,

@@ -104,7 +104,30 @@ if (!function_exists('publicMedia')) {
 
 function errResponse($code,$message){
     return response()->json([
-        'status' => 'error',
-        'message' => 'Terjadi kesalahan sistem. Silakan coba lagi.'
-    ], 500);
+        'status' => false,
+        'message' => $message
+    ], $code);
+}
+
+function errResponseDebug($code,$message,$debug){
+    return response()->json([
+        'status' => false,
+        'message' => $message,
+        'debug' => $debug
+    ], $code);
+}
+
+function successResponse($data,$message=''){
+    return response()->json([
+        'status' => true,
+        'message' => $message,
+        'data' => $data
+    ], 200);
+}
+
+function successMessage($message){
+    return response()->json([
+        'status' => true,
+        'message' => $message
+    ], 200);
 }

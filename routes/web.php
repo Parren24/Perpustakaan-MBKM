@@ -36,9 +36,10 @@ Route::prefix('app')
         generalRoute(App\Http\Controllers\Admin\MasterController::class, 'master', 'app');
 
         generalRoute(App\Http\Controllers\Admin\BiblioController::class, 'biblio', 'app');
-       
 
-
+        // Route khusus untuk generate token
+        Route::post('/generate-token', [App\Http\Controllers\Admin\UserController::class, 'initiateUserToken'])
+            ->name('generate-token');
 
         generalRoute(App\Http\Controllers\Admin\UserController::class, 'user', 'app');
         generalRoute(App\Http\Controllers\Admin\RoleController::class, 'roles', 'app', false);
@@ -55,3 +56,7 @@ Route::prefix('app')
 // Route::get('/media/thumb/{id}', function ($id) {
 //     return serveMedia(decid($id), true);
 // })->name('media.thumb');
+
+// Test route tanpa middleware untuk debug
+Route::get('/test-token-debug', [App\Http\Controllers\Admin\UserController::class, 'testToken']);
+Route::get('/test-generate-get', [App\Http\Controllers\Admin\UserController::class, 'initiateUserToken']);
