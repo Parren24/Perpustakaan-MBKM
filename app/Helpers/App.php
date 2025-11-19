@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Session;
 
 function thumbnail($fileName = '')
 {
@@ -102,14 +103,16 @@ if (!function_exists('publicMedia')) {
     }
 }
 
-function errResponse($code,$message){
+function errResponse($code, $message)
+{
     return response()->json([
         'status' => false,
         'message' => $message
     ], $code);
 }
 
-function errResponseDebug($code,$message,$debug){
+function errResponseDebug($code, $message, $debug)
+{
     return response()->json([
         'status' => false,
         'message' => $message,
@@ -117,7 +120,8 @@ function errResponseDebug($code,$message,$debug){
     ], $code);
 }
 
-function successResponse($data,$message=''){
+function successResponse($data, $message = '')
+{
     return response()->json([
         'status' => true,
         'message' => $message,
@@ -125,9 +129,28 @@ function successResponse($data,$message=''){
     ], 200);
 }
 
-function successMessage($message){
+function successMessage($message)
+{
     return response()->json([
         'status' => true,
         'message' => $message
     ], 200);
 }
+
+function checkMemberUserValid($sessionData)
+{
+    $memberData = $sessionData;
+    if (!$sessionData || !isset($sessionData['user_id'])) {
+        return errResponse(401, 'Sesi member tidak valid atau telah kedaluwarsa.');
+    }
+    return $memberData;
+};
+
+function checkMemberNomorIndukValid($sessionData)
+{
+    $memberData = $sessionData;
+    if (!isset($sessionData['nomor_induk']) || empty($sessionData['nomor_induk'])) {
+        return errResponse(401, 'Sesi member belum ter-otorisasi. Silakan scan QR code user terlebih dahulu.');
+    }
+    return $memberData;
+};

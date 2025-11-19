@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class Loan extends Model
 {
@@ -185,7 +186,7 @@ class Loan extends Model
             ->count();
     }
 
-    public static function InsertDataTableLoan($cartItems, $memberData , $duedate)
+    public static function InsertDataTableLoan($cartItems, $memberData, $duedate)
     {
         return DB::connection('mysql_opac')->table('loan')->insertGetId([
             'member_id' => $memberData,
@@ -205,19 +206,47 @@ class Loan extends Model
         return DB::connection('mysql_opac')
             ->table('loan')
             ->select([
-                    'loan.loan_id',
-                    'loan.item_code',
-                    'loan.loan_date',
-                    'loan.due_date',
-                    'loan.renewed',
-                    'biblio.title',
-                    'biblio.sor as author'
-                ])
-                ->leftJoin('item', 'loan.item_code', '=', 'item.item_code')
-                ->leftJoin('biblio', 'item.biblio_id', '=', 'biblio.biblio_id')
-                ->where('loan.member_id', $memberId)
-                ->where('loan.is_return', 0)
-                ->orderBy('loan.loan_date', 'desc')
-                ->get();
+                'loan.loan_id',
+                'loan.item_code',
+                'loan.loan_date',
+                'loan.due_date',
+                'loan.renewed',
+                'biblio.title',
+                'biblio.sor as author'
+            ])
+            ->leftJoin('item', 'loan.item_code', '=', 'item.item_code')
+            ->leftJoin('biblio', 'item.biblio_id', '=', 'biblio.biblio_id')
+            ->where('loan.member_id', $memberId)
+            ->where('loan.is_return', 0)
+            ->orderBy('loan.loan_date', 'desc')
+            ->get();
+    }
+
+    public static function getDataDetail($where = [], $get = true)
+    {
+        $user = Auth::user();
+        $query = DB::connection('mysql_opac')
+            ->table(DB::raw((new self())->table . ' as l'))
+            ->leftJoin('member as m', 'l.member_id', '=', 'm.member_id')
+            ->leftJoin('item as i', 'l.item_code', '=', 'i.item_code')
+            ->leftJoin('biblio as b', 'i.biblio_id', '=', 'b.biblio_id')
+
+            ->selectRaw('
+                l.*,
+                m.member_name,
+                i.biblio_id,
+                b.title
+            ')
+            ->where(function ($query) use ($where) {
+                foreach ($where as $key => $value) {
+                    if (is_array($value)) {
+                        $query->whereIn($key, $value);
+                    } else {
+                        $query->where($key, $value);
+                    }
+                }
+            });
+
+        return $get ? $query->get() : $query;
     }
 }

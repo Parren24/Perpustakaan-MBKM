@@ -29,7 +29,7 @@
                         <!-- Tombol untuk memulai peminjaman -->
                         <div class="text-center mb-4">
                             <button type="button" id="startBtn" class="btn btn-primary btn-lg" onclick="startPeminjaman()">
-                                <i class="fas fa-qrcode me-2"></i>Mulai Peminjaman
+                                <i class="fas fa-qrcode me-2"></i>Buat Token Peminjaman
                             </button>
                         </div>
                         
@@ -241,27 +241,44 @@
         }
 
         function startCountdown(duration, displayElement) {
-            let timer = duration;
-            
-            // Clear any existing countdown
-            if (window.countdownInterval) {
-                clearInterval(window.countdownInterval);
-            }
-            
-            window.countdownInterval = setInterval(() => {
-                let minutes = parseInt(timer / 60, 10);
-                let seconds = parseInt(timer % 60, 10);
-                minutes = minutes < 10 ? "0" + minutes : minutes;
-                seconds = seconds < 10 ? "0" + seconds : seconds;
+        // 1. Tentukan timestamp kapan QR code akan kedaluwarsa
+        //    Date.now() adalah waktu saat ini dalam milidetik
+        //    duration adalah dalam detik, jadi kita kalikan 1000
+        const expirationTimestamp = Date.now() + (duration * 1000);
 
-                displayElement.innerHTML = `<i class="fas fa-clock"></i> Kedaluwarsa dalam: <strong>${minutes}:${seconds}</strong>`;
-
-                if (--timer < 0) {
-                    clearInterval(window.countdownInterval);
-                    resetResults();
-                    showError('Session QR Code telah habis. Silakan mulai ulang.');
-                }
-            }, 1000);
+        // Clear any existing countdown
+        if (window.countdownInterval) {
+            clearInterval(window.countdownInterval);
         }
+
+        function updateTimer() {
+            // 2. Dapatkan sisa waktu dalam milidetik
+            const remainingMilliseconds = expirationTimestamp - Date.now();
+
+            // 3. Ubah ke total detik
+            //    Kita gunakan Math.max(0, ...) agar tidak menampilkan angka negatif
+            const totalSeconds = Math.max(0, Math.floor(remainingMilliseconds / 1000));
+
+            let minutes = parseInt(totalSeconds / 60, 10);
+            let seconds = parseInt(totalSeconds % 60, 10);
+            minutes = minutes < 10 ? "0" + minutes : minutes;
+            seconds = seconds < 10 ? "0" + seconds : seconds;
+
+            displayElement.innerHTML = `<i class="fas fa-clock"></i> Kedaluwarsa dalam: <strong>${minutes}:${seconds}</strong>`;
+
+            // 4. Periksa apakah waktu sudah habis
+            if (totalSeconds <= 0) {
+                clearInterval(window.countdownInterval);
+                resetResults();
+                showError('Session QR Code telah habis. Silakan mulai ulang.');
+            }
+        }
+
+        // Panggil updateTimer() sekali agar tampilan langsung muncul (tidak menunggu 1 detik)
+        updateTimer(); 
+        
+        // Atur interval untuk memperbarui timer setiap detik
+        window.countdownInterval = setInterval(updateTimer, 1000);
+    }
     </script>
 @endpush

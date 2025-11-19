@@ -27,10 +27,7 @@ class CartLoanController extends Controller
             return $content;
         } catch (\Exception $e) {
             Log::error('CartLoanController clearCart error: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'error' => 'Terjadi kesalahan sistem. Silakan coba lagi.'
-            ], 500);
+            return errResponse(500, 'Terjadi kesalahan sistem. Silakan coba lagi.');
         }
     }
 
@@ -43,10 +40,7 @@ class CartLoanController extends Controller
             return $content;
         } catch (\Exception $e) {
             Log::error('CartLoanController removeFromCart error: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'error' => 'Terjadi kesalahan sistem. Silakan coba lagi.'
-            ], 500);
+            return errResponse(500, 'Terjadi kesalahan sistem. Silakan coba lagi.');
         }
     }
 
@@ -62,10 +56,20 @@ class CartLoanController extends Controller
             return $content;
         } catch (\Exception $e) {
             Log::error('CartLoanController getCartItems error: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'error' => 'Terjadi kesalahan sistem. Silakan coba lagi.'
-            ], 500);
+            return errResponse(500, 'Terjadi kesalahan sistem. Silakan coba lagi.');
+        }
+    }
+
+    public function addBookToCartLoan(Request $request) 
+    {
+        try {
+            $content = SafeDataService::safeExecute(
+                fn() => CartLoanService::addBookToCartLoan($request)
+            );
+            return $content;
+        } catch (\Exception $e) {
+            Log::error('CartLoanController addBookToCartLoan error: ' . $e->getMessage());
+            return errResponse(500, 'Terjadi kesalahan sistem. Silakan coba lagi.');
         }
     }
 }

@@ -18,7 +18,7 @@ class LandingService
             'header'      => '',
             'title'       => 'Beranda',
             'subtitle'    => '',
-            'description' => 'Politeknik Caltex Riau (PCR) adalah perguruan tinggi di Riau yang didirikan atas kerja sama Pemerintah Provinsi Riau dengan PT Chevron Pacific Indonesia',
+            'description' => 'Lakukan PEminjaman Buku dengan mudah melalui Aplikasi Perpustakaan Politeknik Caltex Riau',
         ];
     }
 

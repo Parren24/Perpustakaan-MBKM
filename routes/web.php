@@ -19,23 +19,11 @@ Route::prefix('app')
     ->group(function () {
         generalRoute(App\Http\Controllers\Admin\DashboardController::class, 'dashboard', 'app');
 
-        // generalRoute(App\Http\Controllers\Admin\Konten\MainController::class, 'konten-main', 'konten');
-        generalRoute(App\Http\Controllers\Admin\Konten\KontenController::class, 'konten', 'app');
-        generalRoute(App\Http\Controllers\Admin\Konten\KontenMainController::class, 'konten-main', 'app');
-        generalRoute(App\Http\Controllers\Admin\Konten\KontenSlideController::class, 'konten-slide', 'app');
-        generalRoute(App\Http\Controllers\Admin\Konten\KontenPageController::class, 'konten-page', 'app');
-        generalRoute(App\Http\Controllers\Admin\Konten\KontenJurusanController::class, 'konten-jurusan', 'app');
-        generalRoute(App\Http\Controllers\Admin\Konten\KontenProdiController::class, 'konten-prodi', 'app');
 
-        generalRoute(App\Http\Controllers\Admin\PostController::class, 'post', 'app');
-        generalRoute(App\Http\Controllers\Admin\AgendaController::class, 'agenda', 'app');
-
-        generalRoute(App\Http\Controllers\Admin\TestiController::class, 'testi', 'app');
-
-        generalRoute(App\Http\Controllers\Admin\MediaController::class, 'media', 'app', false);
-        generalRoute(App\Http\Controllers\Admin\MasterController::class, 'master', 'app');
 
         generalRoute(App\Http\Controllers\Admin\BiblioController::class, 'biblio', 'app');
+
+        generalRoute(App\Http\Controllers\Admin\LoanController::class, 'loan', 'app');
 
         // Route khusus untuk generate token
         Route::post('/generate-token', [App\Http\Controllers\Admin\UserController::class, 'initiateUserToken'])

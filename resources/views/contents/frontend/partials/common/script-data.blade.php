@@ -33,6 +33,6 @@
 <script src="{{ asset('theme/frontend/js/function.js') }}"></script>
 
 <script src="{{ asset('theme/frontend/js/QRCode.min.js') }}"></script>
-
-
-
+{{-- SweetAlert2 js file --}}
+<script src="{{ asset('theme/plugins/global/plugins.bundle.js') }}"></script>
+<link href="{{ asset('theme/plugins/global/plugins.bundle.css') }}" rel="stylesheet" type="text/css" />

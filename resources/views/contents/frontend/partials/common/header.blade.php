@@ -75,20 +75,8 @@
                                     @endif
                                 </li>
                             @endforeach
-                            <li class="nav-item d-md-none">
-                                <a class="nav-link" href="{{ route('frontend.information.contact') }}">
-                                    Kontak Kami
-                                </a>
-                            </li>
                         </ul>
                     </div>
-                </div>
-
-                <div class="header-btn-- d-inline-flex d-none d-md-block mt-md-2">
-                    <a href="{{ route('frontend.information.contact') }}"
-                       class="btn-default btn-highlighted text-nowrap contact-button-">
-                        Kontak Kami
-                    </a>
                 </div>
                 <div class="navbar-toggle"></div>
             </div>
