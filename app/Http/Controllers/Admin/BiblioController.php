@@ -20,10 +20,10 @@ class BiblioController extends Controller
     {
         $this->activeRoot   = 'biblio';
         $this->breadCrump[] = ['title' => 'Biblio', 'link' => url('#')];
-        $this->middleware('permission:biblio-list', ['only' => ['index', 'data']]);
-        $this->middleware('permission:biblio-create', ['only' => ['store']]);
-        $this->middleware('permission:biblio-edit', ['only' => ['update']]);
-        $this->middleware('permission:biblio-delete', ['only' => ['destroy']]);
+        // $this->middleware('permission:biblio-list', ['only' => ['index', 'data']]);
+        // $this->middleware('permission:biblio-create', ['only' => ['store']]);
+        // $this->middleware('permission:biblio-edit', ['only' => ['update']]);
+        // $this->middleware('permission:biblio-delete', ['only' => ['destroy']]);
     }
 
     /**

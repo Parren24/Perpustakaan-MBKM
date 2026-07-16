@@ -224,19 +224,22 @@ class Loan extends Model
 
     public static function getDataDetail($where = [], $get = true)
     {
-        $user = Auth::user();
+        $databasePeminjaman = config('database.connections.mysql_primary.database');
+        $user = Auth::user();   
         $query = DB::connection('mysql_opac')
             ->table(DB::raw((new self())->table . ' as l'))
             ->leftJoin('member as m', 'l.member_id', '=', 'm.member_id')
             ->leftJoin('item as i', 'l.item_code', '=', 'i.item_code')
             ->leftJoin('biblio as b', 'i.biblio_id', '=', 'b.biblio_id')
-
+            ->leftJoin($databasePeminjaman . '.penalties as p', 'l.loan_id', '=', 'p.loan_id')
             ->selectRaw('
                 l.*,
                 m.member_name,
                 i.biblio_id,
-                b.title
+                b.title,
+                p.penalty_id
             ')
+            ->where('l.member_id', $user->nomor_induk)
             ->where(function ($query) use ($where) {
                 foreach ($where as $key => $value) {
                     if (is_array($value)) {
@@ -245,7 +248,12 @@ class Loan extends Model
                         $query->where($key, $value);
                     }
                 }
-            });
+            })
+            ->orderby('l.is_return', 'asc')
+            ->orderby('l.due_date', 'asc')
+            ->orderBy('l.loan_date', 'desc')
+            ->orderBy('l.return_date', 'asc')
+            ;
 
         return $get ? $query->get() : $query;
     }

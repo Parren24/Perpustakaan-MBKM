@@ -10,13 +10,13 @@
     <link rel="icon" href="{{ asset('favicon.ico') }}" type="image/x-icon">
 
     @php
-        $defaultMetadata = [
-            'title' => 'Politeknik Caltex Riau',
-            'description' => 'Politeknik Caltex Riau (PCR) adalah perguruan tinggi di Riau yang didirikan atas kerja sama Pemerintah Provinsi Riau dengan PT Chevron Pacific Indonesia',
-            'keywords' => 'PCR,Politeknik,Caltex,Riau,Mahasiswa,Politeknik Riau,Penerimaan Mahasiswa,Politeknik Caltex',
-            'author' => 'Politeknik Caltex Riau',
-            'robots' => 'index, follow',
-        ];
+    $defaultMetadata = [
+    'title' => 'Politeknik Caltex Riau',
+    'description' => 'Politeknik Caltex Riau (PCR) adalah perguruan tinggi di Riau yang didirikan atas kerja sama Pemerintah Provinsi Riau dengan PT Chevron Pacific Indonesia',
+    'keywords' => 'PCR,Politeknik,Caltex,Riau,Mahasiswa,Politeknik Riau,Penerimaan Mahasiswa,Politeknik Caltex',
+    'author' => 'Politeknik Caltex Riau',
+    'robots' => 'index, follow',
+    ];
     @endphp
 
     <link rel="canonical" href="@yield('meta.canonical', url()->current())">
@@ -47,16 +47,16 @@
 
     <title>
         @hasSection('title')
-            {{ config('app.name') }} | @yield('title')
+        {{ config('app.name') }} | @yield('title')
         @else
-            {{ config('app.name') }} | Politeknik Caltex Riau
+        {{ config('app.name') }} | Politeknik Caltex Riau
         @endif
     </title>
 
     @stack('head')
 </head>
 
-<body>
+<body class="d-flex flex-column justify-content-between min-vh-100">
     @yield('base-content')
 
     @stack('script')

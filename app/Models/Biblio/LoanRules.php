@@ -4,6 +4,8 @@ namespace App\Models\Biblio;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class LoanRules extends Model
 {
@@ -71,5 +73,27 @@ class LoanRules extends Model
     public function loans()
     {
         return $this->hasMany(Loan::class, 'loan_rules_id', 'loan_rules_id');
+    }
+
+    public static function getLoanRules($memberId)
+    {
+        $member = DB::connection('mysql_opac')
+            ->table('member')
+            ->where('member_id', $memberId)
+            ->select('member_type_id')
+            ->first();
+
+        if (!$member) {
+            return null; 
+        }
+
+        $loanRules =DB::connection('mysql_opac')
+            ->table('mst_loan_rules')
+            ->where('member_type_id', $member->member_type_id)
+            ->select('loan_periode', 'loan_limit', 'reborrow_limit', 'fine_each_day')
+            ->first();
+
+
+        return $loanRules;
     }
 }

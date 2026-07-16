@@ -3,6 +3,12 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Admin\BiblioController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\LoanController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\FinesController;
+use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\PenaltiesController;
 
 include_once __DIR__ . "/web-frontend.php";
 
@@ -17,24 +23,43 @@ require __DIR__ . '/auth.php';
 Route::prefix('app')
     ->middleware(['auth', 'verified'])
     ->group(function () {
-        generalRoute(App\Http\Controllers\Admin\DashboardController::class, 'dashboard', 'app');
+        generalRoute(DashboardController::class, 'dashboard', 'app');
+
+        // generalRoute(PenaltiesController::class, 'penalties', 'app');
+        generalRoute(FinesController::class, 'fines', 'app');
 
 
 
-        generalRoute(App\Http\Controllers\Admin\BiblioController::class, 'biblio', 'app');
-
-        generalRoute(App\Http\Controllers\Admin\LoanController::class, 'loan', 'app');
+        generalRoute(BiblioController::class, 'biblio', 'app');
+        generalRoute(LoanController::class, 'loan', 'app');
 
         // Route khusus untuk generate token
-        Route::post('/generate-token', [App\Http\Controllers\Admin\UserController::class, 'initiateUserToken'])
+        Route::post('/generate-token', [UserController::class, 'initiateUserToken'])
             ->name('generate-token');
 
-        generalRoute(App\Http\Controllers\Admin\UserController::class, 'user', 'app');
-        generalRoute(App\Http\Controllers\Admin\RoleController::class, 'roles', 'app', false);
+        Route::get('/user/loan-history', [UserController::class, 'LoanHistory'])
+            ->name('user.loan-history');
+
+        Route::post('/sync-mahasiswa', [UserController::class, 'syncAPIMahasiswa'])
+            ->name('user.sync.mahasiswa');
+
+        Route::post('/sync-pegawai', [UserController::class, 'syncAPIPegawai'])
+            ->name('user.sync.pegawai');
+
+        generalRoute(UserController::class, 'user', 'app');
+        generalRoute(RoleController::class, 'roles', 'app', false);
 
         // User Management Routes
         // generalRoute(App\Http\Controllers\Admin\RoleController::class, 'roles', 'app');
 
+
+        // ###############################################
+        // ###############################################
+        Route::get('/kios/scan/{sessionId}', [App\Http\Controllers\Admin\UserController::class, 'mahasiswaScanQr'])
+            ->name('kios.scan');
+        // ###############################################
+        
+        // ###############################################
     });
 
 // //temporary
@@ -48,3 +73,5 @@ Route::prefix('app')
 // Test route tanpa middleware untuk debug
 Route::get('/test-token-debug', [App\Http\Controllers\Admin\UserController::class, 'testToken']);
 Route::get('/test-generate-get', [App\Http\Controllers\Admin\UserController::class, 'initiateUserToken']);
+
+

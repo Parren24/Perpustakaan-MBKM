@@ -32,7 +32,7 @@
         <script src="{{ asset('theme/js/common.js') }}"></script>
         <script src="{{ asset('theme/plugins/custom/xlsx/xlsx.min.js') }}"></script>
         <script src="{{ asset('theme/plugins/custom/tinymce/tinymce.bundle.js') }}"></script>
-        <script src="{{ asset('theme/plugins/custom/dual-listbox/dual-listbox.js') }}"></script>
+        <!-- <script src="{{ asset('theme/plugins/custom/dual-listbox/dual-listbox.js') }}"></script> -->
 
         <!--end::Global Javascript Bundle-->
         <!--begin::Vendors Javascript(used for this page only)-->

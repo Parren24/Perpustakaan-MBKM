@@ -1,609 +1,420 @@
-// TAMBAHKAN BARIS INI DI PALING ATAS
 document.addEventListener('DOMContentLoaded', (event) => {
-
-    let html5QrCode;
-    let isScanning = false;
     let userAuthorized = false;
-    let isProcessingScan = false; // Kunci untuk continuous scanning
-    let isCheckoutComplete = false; // Flag untuk mencegah clear cart setelah sukses checkout
+    let isProcessingScan = false;
     let authorizedUserData = null;
+    let pollingInterval = null; 
+    let currentSessionId = null;
+    let barcodeBuffer = "";
+    let barcodeTimeout = null;
 
     // --- Elemen DOM ---
     const scanModalElement = document.getElementById('scanModal');
-    if (!scanModalElement) {
-        console.error('Modal element #scanModal not found!');
-        return;
-    }
+    if (!scanModalElement) return;
     const scanModal = new bootstrap.Modal(scanModalElement);
 
-    // Elemen di dalam Modal
-    const readerDiv = document.getElementById('reader');
-    const readerContainer = document.getElementById('reader-container');
+    const kiosQrContainer = document.getElementById('kiosQrContainer');
+    const qrImageWrapper = document.getElementById('qrImageWrapper');
+    const barcodeInputContainer = document.getElementById('barcode-input-container');
+    const barcodeInput = document.getElementById('barcodeInput');
     const scannerMessage = document.getElementById('scannerMessage');
-    const errorResultDiv = document.getElementById('errorResult');
-    const errorMessageDiv = document.getElementById('errorMessage');
     const loadingIndicator = document.getElementById('loadingIndicator');
 
-    // Tombol di luar Modal
     const launchScannerBtn = document.getElementById('launchScannerBtn');
-    if (!launchScannerBtn) {
-        console.error('Button element #launchScannerBtn not found!');
-        return;
-    }
-
-    // --- Elemen di Halaman Utama (Keranjang) ---
+    const aturan = document.getElementById('aturan');
+    
     const mainPageCartContainer = document.getElementById('mainPageCartContainer');
     const mainPageUserInfo = document.getElementById('mainPageUserInfo');
     const mainPageCartList = document.getElementById('mainPageCartList');
     const mainPageCartSummary = document.getElementById('mainPageCartSummary');
-    const mainPageAlert = document.getElementById('mainPageAlert');
-
-    // --- Tombol Kontrol Halaman Utama ---
     const mainCheckoutBtn = document.getElementById('mainCheckoutBtn');
-    const resetLoanBtn = document.getElementById('resetLoanBtn'); // Tombol Batal
-    const scanMoreBtn = document.getElementById('scanMoreBtn'); // Tombol Scan Lagi
+    const resetLoanBtn = document.getElementById('resetLoanBtn');
 
-    // Header untuk fetch
     const header_data = {
         'Content-Type': 'application/json',
         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
         'Accept': 'application/json'
     }
 
-    // --- Manajemen Modal & Scanner Lifecycle ---
-
-    // 1. Event listener untuk tombol utama di halaman
     launchScannerBtn.addEventListener('click', () => {
         scanModal.show();
     });
+    window.addEventListener('keypress', function(e) {
+        // Abaikan jika user belum login, atau modal scan QR sedang terbuka, atau sistem sedang memproses buku
+        if (!userAuthorized || isProcessingScan || scanModalElement.classList.contains('show')) return;
 
-    // 2. Saat modal ditampilkan, MULAI scanner
+        const mainScannerMessage = document.getElementById('mainScannerMessage');
+
+        // Jika scanner mengirimkan 'Enter' (selesai scan)
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const scannedText = barcodeBuffer.trim();
+            barcodeBuffer = ""; // Reset buffer untuk scan berikutnya
+            
+            if (scannedText === '') return;
+            
+            isProcessingScan = true;
+            if(mainScannerMessage) {
+                mainScannerMessage.innerHTML = `<div class="alert alert-info py-2 mb-0 text-center"><span class="spinner-border spinner-border-sm me-2" role="status"></span>Mencari buku...</div>`;
+            }
+            
+            getBookDetailsAndAddToCart(scannedText); // Fungsi yang sudah kamu sesuaikan sebelumnya
+            return;
+        }
+
+        // Jika yang diketik adalah karakter normal, masukkan ke buffer
+        if (e.key.length === 1) {
+            barcodeBuffer += e.key;
+        }
+
+        // Trik khusus Kios: Scanner mengetik sangat cepat (biasanya < 30ms per karakter).
+        // Jika jeda antar ketikan lebih dari 100ms, kita anggap itu bukan scanner dan buffer dikosongkan.
+        // Ini mencegah bug jika ada ketikan acak dari keyboard.
+        clearTimeout(barcodeTimeout);
+        barcodeTimeout = setTimeout(() => {
+            barcodeBuffer = "";
+        }, 100); 
+    });
+
     scanModalElement.addEventListener('shown.bs.modal', () => {
-        console.log('Modal shown, starting scanner...');
-        isCheckoutComplete = false;
-        startScanner();
+        isProcessingScan = false;
+        const scanModalLabel = document.getElementById('scanModalLabel');
+
+        if (!userAuthorized) {
+            // MODE TAMPILKAN QR KIOS
+            kiosQrContainer.style.display = 'block';
+            barcodeInputContainer.style.display = 'none';
+            if (scanModalLabel) scanModalLabel.innerHTML = '<i class="fas fa-qrcode me-2"></i> Pindai QR Code';
+            
+            generateKiosQr(); 
+        } else {
+            // MODE SCANNER FISIK BUKU
+            kiosQrContainer.style.display = 'none';
+            barcodeInputContainer.style.display = 'block';
+            if (scanModalLabel) scanModalLabel.innerHTML = '<i class="fas fa-qrcode me-2"></i> Lakukan peminjaman';
+            
+            scannerMessage.textContent = 'Gunakan mesin scanner fisik ke barcode buku...';
+            scannerMessage.className = 'alert alert-info mb-2 text-center';
+            barcodeInput.value = '';
+            barcodeInput.focus();
+        }
     });
 
-    // 3. Saat modal ditutup, STOP scanner
     scanModalElement.addEventListener('hidden.bs.modal', () => {
-        console.log('Modal hidden, stopping scanner...');
-        stopScanner();
-        // Tidak ada logika lain, keranjang sudah tampil/update
+        if (pollingInterval) clearInterval(pollingInterval);
+        barcodeInput.value = '';
     });
 
-    // --- Listener untuk Tombol Kontrol di Halaman Utama ---
-    if (mainCheckoutBtn) {
-        mainCheckoutBtn.addEventListener('click', () => {
-            Swal.fire({
-                title: "Lakukan peminjaman",
-                text: "Apakah kamu yakin ingin melanjutkan ke proses peminjaman?",
-                icon: "question",
-                showCancelButton: true,
-                confirmButtonText: "Ya, Lanjutkan!",
-                cancelButtonText: "Batal",
-                customClass: {
-                    confirmButton: "btn btn-light-primary",
-                    cancelButton: "btn btn-light-dark"
-                },
-                reverseButtons: true
-            }).then(function(result) {
-                if (result.value) {
-                    processFinalCheckoutOnMainPage();
-                    
-                }
-            });
-        });
-    }
-
-    if (resetLoanBtn) {
-        resetLoanBtn.addEventListener('click', () => {
-            Swal.fire({
-                title: "Batalkan peminjaman?",
-                text: "Keranjang akan dikosongkan dan tidak dapat dikembalikan",
-                icon: "warning",
-                showCancelButton: true,
-                confirmButtonText: "Ya, Batalkan!",
-                cancelButtonText: "Batal",
-                customClass: {
-                    confirmButton: "btn btn-light-danger",
-                    cancelButton: "btn btn-light-dark"
-                },
-                reverseButtons: true
-            }).then(function(result) {
-                if (result.value) {
-                    clearCartOnServer();
-                    
-                }
-            });
-        });
-    }
-
-    if (scanMoreBtn) {
-        scanMoreBtn.addEventListener('click', () => {
-            scanModal.show();
-        });
-    }
-
-
-    // Function called when QR code is successfully scanned
-    function onScanSuccess(decodedText, decodedResult) {
-        if (isProcessingScan) {
-            return;
+    barcodeInput.addEventListener('blur', () => {
+        if (scanModalElement.classList.contains('show') && userAuthorized) {
+            barcodeInput.focus();
         }
-        // console.log(`Code matched = ${decodedText}`);
-        isProcessingScan = true;
+    });
 
-        if (!header_data['X-CSRF-TOKEN']) {
-            showErrorInModal('CSRF token tidak ditemukan. Refresh halaman dan coba lagi.');
-            isProcessingScan = false;
-            return;
-        }
-
-        hideModalResults();
-        showModalLoading(true);
-
-        if (!userAuthorized) {
-            // console.log('Authorizing user session with token:', decodedText);
-            scannerMessage.textContent = 'Memverifikasi user...';
-            authorizeUserSession(decodedText);
-        } else {
-            console.log('Getting book details for item:', decodedText);
-            scannerMessage.textContent = 'Mencari buku...';
-            getBookDetailsAndAddToCart(decodedText);
-        }
-    }
-
-    function onScanFailure(error) {
-
-    }
-
-    // Initialize and start the scanner
-    function startScanner() {
-        if (isScanning) {
-            console.log("Scanner is already running");
-            return;
-        }
-
-        hideModalResults();
-        readerContainer.style.display = 'block';
-
-        // Set pesan awal berdasarkan state
-        if (!userAuthorized) {
-            document.getElementById('scanModalLabel').textContent = 'Pindai QR Code User';
-            scannerMessage.textContent = 'Arahkan kamera ke QR Code Anda untuk memulai...';
-        } else {
-            document.getElementById('scanModalLabel').textContent = 'Pindai Barcode Buku';
-            scannerMessage.textContent = 'Arahkan kamera ke barcode buku...';
-        }
-        scannerMessage.className = 'alert alert-info mt-2';
-
-        html5QrCode = new Html5Qrcode("reader");
-
-        const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0, rememberLastUsedCamera: true };
-
-        html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, onScanFailure)
-            .then(() => { isScanning = true; console.log("QR Code scanner started (back camera)"); })
-            .catch(err => {
-                console.error("Unable to start scanning, trying user camera", err);
-                html5QrCode.start({ facingMode: "user" }, config, onScanSuccess, onScanFailure)
-                    .then(() => { isScanning = true; console.log("QR Code scanner started with front camera"); })
-                    .catch(frontErr => {
-                        console.error("Unable to start scanning with any camera", frontErr);
-                        scannerMessage.textContent = 'Gagal mengakses kamera. Izinkan akses kamera dan coba lagi.';
-                        scannerMessage.className = 'alert alert-danger mt-2';
-                    });
-            });
-    }
-
-    // Stop the scanner
-    function stopScanner() {
-        if (html5QrCode && isScanning) {
-            try {
-                html5QrCode.stop().then(() => {
-                    console.log("QR Code scanning stopped");
-                }).catch(err => { console.error("Unable to stop scanning", err); });
-            } catch (err) { console.error("Error stopping scanner", err); }
-        }
-        isScanning = false;
-    }
-
-    // Function untuk authorize user session dengan QR token
-    // REVISI 1: Fungsi ini sekarang juga menginisiasi keranjang di halaman utama
-    function authorizeUserSession(token) {
-        fetch('/biblio/authorize-session', {
-            method: 'POST',
-            headers: header_data,
-            body: JSON.stringify({ token: token })
-        })
-            .then(response => response.json().then(data => ({ ok: response.ok, data })))
-            .then(({ ok, data }) => {
-                showModalLoading(false);
-                if (!ok) {
-                    throw new Error(data.message || data.error || 'HTTP error');
-                }
-
+    // ==========================================
+    // LOGIKA GENERATE QR & POLLING KIOS
+    // ==========================================
+    function generateKiosQr() {
+        scannerMessage.textContent = 'Menghasilkan QR Code...';
+        scannerMessage.className = 'alert alert-light mb-2 text-center';
+        
+        fetch('/biblio/kios/generate-qr-ajax', { headers: header_data })
+            .then(res => res.json())
+            .then(data => {
                 if (data.status) {
-                    userAuthorized = true;
-                    authorizedUserData = data.data;
-
-                    // --- PERUBAHAN UTAMA (REVISI 1) ---
-                    // Panggil inisialisasi cart di halaman utama
-                    initializeMainPageCart();
-                    // --- AKHIR PERUBAHAN ---
-
-                    // Update UI MODAL
-                    document.getElementById('scanModalLabel').textContent = 'Pindai Barcode Buku';
-                    showTemporaryScannerMessage(`User ${data.data.member_name} terotorisasi! Silakan scan buku...`, 'success');
+                    currentSessionId = data.sessionId;
+                    qrImageWrapper.innerHTML = data.qrCode; 
+                    scannerMessage.textContent = 'Menunggu Anda melakukan scan via HP...';
+                    
+                    if (pollingInterval) clearInterval(pollingInterval);
+                    pollingInterval = setInterval(checkKiosStatus, 2000);
                 } else {
-                    showErrorInModal(data.message || 'Gagal melakukan otorisasi.');
+                    scannerMessage.textContent = 'Gagal memuat QR Code.';
+                    scannerMessage.className = 'alert alert-danger mb-2 text-center';
                 }
             })
-            .catch(error => {
-                showModalLoading(false);
-                console.error('Error authorizing user:', error);
-                showErrorInModal(error.message || 'Terjadi kesalahan saat otorisasi.');
-            })
-            .finally(() => {
-                // Jeda 2 detik sebelum scan berikutnya
-                setTimeout(() => {
-                    isProcessingScan = false;
-                }, 2000);
+            .catch(err => console.error("Error Generate QR:", err));
+    }
+
+    function checkKiosStatus() {
+        if (!currentSessionId) return;
+
+        fetch(`/biblio/kios/check-status/${currentSessionId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'scanned') {
+                    clearInterval(pollingInterval);
+                    scannerMessage.textContent = 'Scan berhasil! Menyiapkan sesi...';
+                    scannerMessage.className = 'alert alert-success mb-2 text-center';
+                    claimSession();
+                } else if (data.status === 'expired') {
+                    clearInterval(pollingInterval);
+                    scannerMessage.textContent = 'Waktu QR habis. Silakan tutup dan buka lagi.';
+                    scannerMessage.className = 'alert alert-danger mb-2 text-center';
+                    qrImageWrapper.innerHTML = '<i class="fas fa-times-circle text-danger fa-4x"></i>';
+                }
             });
     }
 
-    // Function untuk get book details dan add to cart
-    // REVISI 1: Fungsi ini sekarang me-refresh keranjang di halaman utama
-    function getBookDetailsAndAddToCart(itemCode) {
-        fetch('/cart-loan/add-to-cart', {
+    function claimSession() {
+        fetch('/biblio/kios/claim-session', {
             method: 'POST',
             headers: header_data,
+            body: JSON.stringify({ session_id: currentSessionId })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status) {
+                userAuthorized = true;
+                authorizedUserData = data.data;
+                scanModal.hide(); 
+                
+                Swal.fire({
+                    icon: 'success', title: 'Otorisasi Berhasil',
+                    text: `Halo, ${data.data.member_name}!`, timer: 1500, showConfirmButton: false
+                }).then(() => {
+                    initializeMainPageCart(); 
+                });
+            } else {
+                scannerMessage.textContent = 'Gagal mengklaim sesi transaksi.';
+                scannerMessage.className = 'alert alert-danger mb-2 text-center';
+            }
+        });
+    }
+
+    // ==========================================
+    // LOGIKA SCANNER FISIK BUKU
+    // ==========================================
+    barcodeInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault(); 
+            const scannedText = this.value.trim();
+            this.value = ''; 
+            
+            if (scannedText === '' || isProcessingScan) return;
+            
+            isProcessingScan = true;
+            loadingIndicator.style.display = 'block';
+            scannerMessage.textContent = 'Mencari buku...';
+            scannerMessage.className = 'alert alert-light mb-2 text-center';
+            
+            getBookDetailsAndAddToCart(scannedText);
+        }
+    });
+
+    function getBookDetailsAndAddToCart(itemCode) {
+        const msgDiv = document.getElementById('mainScannerMessage'); // Targetkan div alert yang baru
+        
+        fetch('/cart-loan/add-to-cart', {
+            method: 'POST', headers: header_data,
             body: JSON.stringify({ item_code: itemCode })
         })
-            .then(response => response.json().then(data => ({ ok: response.ok, data })))
-            .then(({ ok, data }) => {
-                showModalLoading(false);
-                if (!ok) {
-                    throw new Error(data.message || data.error || `HTTP error!`);
-                }
-
-                if (data.status) {
-                    // Tampilkan pesan sukses sementara di modal
-                    showTemporaryScannerMessage(`Buku (Kode: ${itemCode}) berhasil ditambahkan!`, 'success');
-
-                    // --- PERUBAHAN UTAMA (REVISI 1) ---
-                    // Refresh keranjang di halaman utama (live)
-                    refreshMainPageCart();
-                    // --- AKHIR PERUBAHAN ---
-
-                } else {
-                    console.error('Backend returned error:', data);
-                    showErrorInModal(data.message || 'Gagal menambahkan buku ke keranjang.');
-                }
-            })
-            .catch(error => {
-                showModalLoading(false);
-                console.error('Fetch error details:', error);
-                showErrorInModal(error.message || 'Terjadi kesalahan saat menambahkan buku.');
-            })
-            .finally(() => {
-                // Jeda 2 detik sebelum scan berikutnya
-                setTimeout(() => {
-                    isProcessingScan = false;
-                }, 2000);
-            });
-    }
-
-
-    // --- FUNGSI UI MODAL (Hanya untuk pesan error/loading) ---
-
-    function showErrorInModal(message) {
-        errorMessageDiv.textContent = message;
-        errorResultDiv.style.display = 'block';
-
-        scannerMessage.textContent = message;
-        scannerMessage.className = 'alert alert-danger mt-2';
-
-        setTimeout(() => {
-            if (!userAuthorized) {
-                scannerMessage.textContent = 'Arahkan kamera ke QR Code Anda untuk memulai...';
-                scannerMessage.className = 'alert alert-info mt-2';
+        .then(res => res.json())
+        .then(data => {
+            if (data.status) {
+                msgDiv.innerHTML = `<div class="alert alert-success py-2 mb-0 text-center"><i class="fas fa-check-circle me-2"></i>Buku berhasil ditambahkan!</div>`;
+                refreshMainPageCart(); // Update UI Keranjang
             } else {
-                scannerMessage.textContent = 'Silakan scan barcode buku berikutnya...';
-                scannerMessage.className = 'alert alert-info mt-2';
+                msgDiv.innerHTML = `<div class="alert alert-danger py-2 mb-0 text-center"><i class="fas fa-exclamation-circle me-2"></i>${data.message || 'Gagal menambahkan buku.'}</div>`;
             }
-            hideModalResults();
-        }, 5000);
-    }
-
-    function showTemporaryScannerMessage(message, type = 'info') {
-        scannerMessage.textContent = message;
-        scannerMessage.className = `alert alert-${type} mt-2`;
-
-        setTimeout(() => {
-            if (userAuthorized) {
-                scannerMessage.textContent = 'Arahkan kamera ke barcode buku...';
-                scannerMessage.className = 'alert alert-info mt-2';
+            
+            // Bersihkan pesan error/sukses setelah 2 detik dan pastikan fokus kembali ke input
+            setTimeout(() => { 
+                isProcessingScan = false; 
+                if(userAuthorized) {
+                    msgDiv.innerHTML = '';
+                    const mainBarcodeInput = document.getElementById('mainBarcodeInput');
+                    if(mainBarcodeInput) mainBarcodeInput.focus();
+                }
+            }, 2500);
+        })
+        .catch(err => {
+            isProcessingScan = false;
+            if(msgDiv) {
+                msgDiv.innerHTML = `<div class="alert alert-danger py-2 mb-0 text-center">Terjadi kesalahan sistem saat menghubungi server.</div>`;
             }
-        }, 5000);
+            console.error("Error Add Cart:", err);
+        });
     }
 
-    function showModalLoading(isLoading) {
-        loadingIndicator.style.display = isLoading ? 'block' : 'none';
-    }
-
-    function hideModalResults() {
-        errorResultDiv.style.display = 'none';
-        loadingIndicator.style.display = 'none';
-    }
-
-    // --- BARU: Fungsi untuk Halaman Utama (Live Update) ---
-
-    // Dipanggil SEKALI saat user auth berhasil
+    // ==========================================
+    // FUNGSI RENDER KERANJANG
+    // ==========================================
     function initializeMainPageCart() {
-        // Tampilkan info user (sudah ada di global state)
         if (authorizedUserData) {
             mainPageUserInfo.innerHTML = `
-                <div class="alert alert-success">
-                    <h6 class="mb-2"><i class="fas fa-user-check me-2"></i>User Terotorisasi</h6>
-                    <p class="mb-2">Nama: <strong>${authorizedUserData.member_name}</strong></p>
-                    <p class="mb-0">Member ID: <strong>${authorizedUserData.nomor_induk || 'N/A'}</strong></p>
+                <div class="alert alert-light border-0 h-100 shadow-sm d-flex flex-column justify-content-center">
+                    <h3 class="fw-bolder">Halo, ${authorizedUserData.member_name}!</h3>
+                    <p class="mb-3 text-muted">Sistem siap. Silakan langsung scan barcode fisik buku Anda.</p>
+                    
+                    <div id="mainScannerMessage" class="mt-2 w-100" style="min-height: 40px;"></div>
                 </div>`;
-        } else {
-            mainPageUserInfo.innerHTML = '';
         }
-
-        // Tampilkan container utama, sembunyikan tombol awal
+        
         mainPageCartContainer.style.display = 'block';
-        launchScannerBtn.style.display = 'none';
-
-        // Muat keranjang untuk pertama kali
+        if (launchScannerBtn) launchScannerBtn.style.display = 'none';
+        if (aturan) aturan.style.display = 'none';
+        
         refreshMainPageCart();
     }
 
-    // Dipanggil setiap kali ada perubahan keranjang (tambah buku)
     function refreshMainPageCart() {
-        let cartIsEmpty = true; // Asumsikan kosong by default
-        showMainPageLoading(true); // Tampilkan loading, nonaktifkan SEMUA tombol
+        mainPageCartList.innerHTML = '<div class="text-center p-3"><div class="spinner-border text-primary"></div></div>';
 
-        // Hapus alert lama
-        mainPageAlert.style.display = 'none';
+        fetch('/cart-loan/cart-items', { method: 'GET', headers: header_data })
+        .then(res => res.json())
+        .then(data => {
+            if (!data.status) {
+                mainPageCartList.innerHTML = `<div class="alert alert-danger">${data.message || 'Gagal memuat keranjang'}</div>`;
+                return;
+            }
 
-        fetch('/cart-loan/cart-items', {
-            method: 'GET',
-            headers: header_data
-        })
-            .then(response => response.json().then(data => ({ ok: response.ok, data })))
-            .then(({ ok, data }) => {
-                if (!ok) throw new Error(data.message || data.error || 'HTTP error');
-                if (!data.status) throw new Error(data.message || 'Gagal memuat keranjang');
-
-                const cartData = data.data;
-                cartIsEmpty = cartData.total_items === 0; // Update status keranjang
-
-                // Tampilkan item keranjang
-                let itemsHtml = `<div class="alert alert-light">Keranjang kosong. Silakan scan buku.</div>`;
-                if (cartData.cart_items && cartData.cart_items.length > 0) {
-                    itemsHtml = `
-                        <ul class="list-group">
-                            ${cartData.cart_items.map(item => `
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <h3><strong>${item.title}</strong></h3><br>
-                                        <small class="text-muted">Kode: ${item.item_code}</small>
-                                        ${item.author ? `<br><small class="text-muted">Penulis: ${item.author}</small>` : ''}
-                                    </div>
-                                    
-                                    <button type="button" class="btn btn-sm btn-outline-danger" 
-                                            onclick="removeBookFromCart('${item.item_code}')" 
-                                            title="Hapus buku ini">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                    </li>
-                            `).join('')}
-                        </ul>`;
-                }
+            // Mengambil object di dalam data.data
+            const cartData = data.data; 
+            mainCheckoutBtn.disabled = cartData.total_items === 0;
+            
+            if (cartData.total_items > 0) {
+                let itemsHtml = '<ul class="list-group shadow-sm">';
+                cartData.cart_items.forEach(item => {
+                    const safeTitle = item.title ? item.title.replace(/'/g, "\\'").replace(/"/g, "&quot;") : 'Tanpa Judul';
+                    itemsHtml += `
+                        <li class="list-group-item d-flex justify-content-between align-items-center p-3">
+                            <div>
+                                <h5 class="mb-1 fw-bold text-dark">${item.title}</h5>
+                                <div class="text-muted small">Kode Buku: <span class="badge bg-primary">${item.item_code}</span></div>
+                            </div>
+                            <button class="btn btn-sm btn-light-danger px-3 rounded-pill" onclick="removeBookFromCart('${item.item_code}', '${safeTitle}')">
+                                <i class="fas fa-trash"></i> Hapus
+                            </button>
+                        </li>
+                    `;
+                });
+                itemsHtml += '</ul>';
                 mainPageCartList.innerHTML = itemsHtml;
-
-                // Tampilkan summary
+                
                 mainPageCartSummary.innerHTML = `
-                    <hr>
-                    <div class="text-end">
-                        <h5>Total buku: <strong>${cartData.total_items} / 2</strong></h5>
-                        <p class="mb-0">Sisa slot: <strong>${cartData.remaining_slots}</strong></p>
+                    <div class="d-flex justify-content-between align-items-center mt-4 p-3 bg-light rounded">
+                        <span class="text-muted">Sisa Slot Buku: <strong>${cartData.remaining_slots}</strong></span>
+                        <h5 class="mb-0">Total: <strong>${cartData.total_items} / ${cartData.loan_limit}</strong> Buku</h5>
                     </div>
                 `;
-            })
-            .catch(error => {
-                console.error('Error refreshing cart:', error);
-                showMainPageAlert('danger', error.message || 'Gagal memuat keranjang.');
-            })
-            .finally(() => {
-                // Selesai loading, atur ulang status tombol
-                showMainPageLoading(false);
-                // Nonaktifkan checkout HANYA jika keranjang kosong
-                mainCheckoutBtn.disabled = cartIsEmpty;
-            });
+            } else {
+                mainPageCartList.innerHTML = `<div class="alert text-center p-4"><i class="fas fa-box-open fa-3x text-muted"></i><br>Keranjang kosong. Silakan scan barcode buku.</div>`;
+                mainPageCartSummary.innerHTML = '';
+            }
+        })
+        .catch(err => {
+            console.error("Fetch Cart Error:", err);
+            mainPageCartList.innerHTML = `<div class="alert alert-danger">Terjadi kesalahan jaringan saat memuat keranjang.</div>`;
+        });
     }
-    window.removeBookFromCart = function (itemCode) {
 
-    Swal.fire({
-        title: "Hapus buku ini?",
-        text: `Anda yakin ingin menghapus buku (Kode: ${itemCode}) dari keranjang?`,
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonText: "Ya, Hapus!",
-        cancelButtonText: "Batal",
-        customClass: {
-            confirmButton: "btn btn-light-danger",
-            cancelButton: "btn btn-light-dark"
-        },
-        reverseButtons: true
-    }).then(function(result) {
-        // Hanya jalankan jika user mengklik "Ya, Hapus!"
-        if (result.value) { 
-            
-            // Tampilkan pesan sementara
-            showMainPageAlert('info', `Menghapus buku (Kode: ${itemCode})...`);
+    // Fungsi untuk memicu cetak struk setelah transaksi sukses
+    function triggerAutoPrint(loanData) {
+        // Ambil data buku dan info member yang terotorisasi
+        const items = loanData.print_receipts || loanData.borrowed_items || [];
+        const memberName = authorizedUserData ? authorizedUserData.member_name : 'Anggota';
+        const memberId = authorizedUserData ? authorizedUserData.nomor_induk : '';
+        
+        // Susun URL printer ke Route khusus dengan query parameter data struk
+        const printUrl = `/print/struk?data=${encodeURIComponent(JSON.stringify(items))}&member_name=${encodeURIComponent(memberName)}&member_id=${encodeURIComponent(memberId)}`;
+        
+        // Buka jendela/pop-up kecil baru di latar belakang untuk melakukan cetak otomatis
+        let iframe = document.getElementById('silent-print-iframe');
+        if (!iframe) {
+            iframe = document.createElement('iframe');
+            iframe.id = 'silent-print-iframe';
+            iframe.style.position = 'absolute';
+            iframe.style.width = '0px';
+            iframe.style.height = '0px';
+            iframe.style.border = 'none';
+            document.body.appendChild(iframe);
+        }
+        
+        // Masukkan URL struk ke dalam iframe tersebut
+        iframe.src = printUrl;
+    }
 
-            fetch('/cart-loan/cart-item', { // Endpoint ini dari file JS asli Anda
-                method: 'DELETE',
-                headers: header_data,
-                body: JSON.stringify({
-                    item_code: itemCode
+    window.removeBookFromCart = function(itemCode, itemTitle) {
+        Swal.fire({
+            title: "Hapus buku?",
+            text: `Keluarkan "${itemTitle}" dari keranjang?`,
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Ya, Hapus!",
+            cancelButtonText: "Batal",
+            customClass: { confirmButton: "btn btn-danger", cancelButton: "btn btn-secondary" }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch('/cart-loan/cart-item', { 
+                    method: 'DELETE', headers: header_data, 
+                    body: JSON.stringify({ item_code: itemCode }) 
                 })
-            })
-            .then(response => response.json().then(data => ({ ok: response.ok, data })))
-            .then(({ ok, data }) => {
-                if (!ok) {
-                    throw new Error(data.message || data.error || 'HTTP error');
-                }
-                if (!data.status) {
-                    throw new Error(data.message || 'Gagal menghapus buku');
-                }
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status) {
+                        refreshMainPageCart();
+                    } else {
+                        Swal.fire('Gagal', data.message, 'error');
+                    }
+                });
+            }
+        });
+    }
 
-                // Sukses! Beri pesan dan panggil refresh
-                console.log('Buku dihapus, me-refresh keranjang...');
-                showMainPageAlert('success', `Buku (Kode: ${itemCode}) berhasil dihapus.`);
-
-            })
-            .catch(error => {
-                console.error('Error removing from cart:', error);
-                showMainPageAlert('danger', error.message || 'Terjadi kesalahan saat menghapus buku');
-            })
-            .finally(() => {
-                // Selalu refresh keranjang, baik sukses maupun gagal, untuk sinkronisasi
-                // Fungsi refreshMainPageCart akan mengurus loading state-nya sendiri
-                refreshMainPageCart();
-            });
-        }
-        // Jika result.value false (klik "Batal"), tidak terjadi apa-apa
+    // ==========================================
+    // LOGIKA CHECKOUT & BATAL
+    // ==========================================
+    mainCheckoutBtn.addEventListener('click', () => {
+        Swal.fire({
+            title: "Lakukan peminjaman",
+            text: "Apakah kamu yakin ingin menyelesaikan proses peminjaman?",
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonText: "Ya, Selesaikan!",
+            cancelButtonText: "Batal",
+            customClass: { confirmButton: "btn btn-success", cancelButton: "btn btn-secondary" }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({ title: 'Memproses...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+                
+                fetch('/loan/complete-loan', { method: 'POST', headers: header_data })
+                .then(res => res.json())
+                .then(data => {
+                    if(data.status) {
+                        triggerAutoPrint(data.data);
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil!',
+                            text: 'Buku berhasil dipinjam. Struk sedang dicetak...',
+                            timer: 3000,
+                            showConfirmButton: false
+                        }).then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire('Gagal', data.message, 'error');
+                    }
+                })
+                .catch(err => Swal.fire('Error', 'Terjadi kesalahan sistem.', 'error'));
+            }
+        });
     });
-}
-    // Fungsi untuk checkout DI HALAMAN UTAMA (Sama seperti sebelumnya)
-    function processFinalCheckoutOnMainPage() {
-        showMainPageLoading(true);
 
-        fetch('/loan/complete-loan', {
-            method: 'POST',
-            headers: header_data,
-            body: JSON.stringify({}) // Body kosong, auth via session
-        })
-            .then(response => response.json().then(data => ({ ok: response.ok, data })))
-            .then(({ ok, data }) => {
-                if (!ok) throw new Error(data.message || data.error || 'HTTP error');
-
-                if (data.status) {
-                    isCheckoutComplete = true;
-
-                    const successMessage = `Peminjaman Berhasil! Total ${data.data.total_borrowed} buku dipinjam. Batas pengembalian: ${data.data.due_date}. Halaman akan dimuat ulang dalam 5 detik.`;
-                    showMainPageAlert('success', successMessage);
-
-                    // Sembunyikan semua tombol kontrol
-                    mainCheckoutBtn.style.display = 'none';
-                    resetLoanBtn.style.display = 'none';
-                    scanMoreBtn.style.display = 'none';
-
-                    setTimeout(() => {
-                        location.reload();
-                    }, 5000);
-
-                } else {
-                    throw new Error(data.message || 'Gagal memproses peminjaman');
-                }
-            })
-            .catch(error => {
-                console.error('Error processing checkout:', error);
-                showMainPageAlert('danger', error.message || 'Terjadi kesalahan saat memproses peminjaman');
-            })
-            .finally(() => {
-                showMainPageLoading(false);
-            });
-    }
-
-    // --- Fungsi-fungsi helper Halaman Utama ---
-
-    function showMainPageLoading(isLoading) {
-        if (isLoading) {
-            mainCheckoutBtn.disabled = true;
-            resetLoanBtn.disabled = true;
-            scanMoreBtn.disabled = true;
-            mainCheckoutBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Memproses...';
-        } else {
-            // Status disabled akan diatur oleh refreshMainPageCart
-            resetLoanBtn.disabled = false;
-            scanMoreBtn.disabled = false;
-            mainCheckoutBtn.innerHTML = '<i class="fas fa-check me-2"></i>Proses Checkout';
-        }
-    }
-
-    function showMainPageAlert(type, message) {
-        mainPageAlert.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
-        mainPageAlert.style.display = 'block';
-    }
-
-
-    // --- Fungsi Reset Total (Dipakai tombol Batal) ---
-    // function resetFullProcess() {
-    //     if (userAuthorized) {
-    //         // Hanya clear cart jika user sempat auth
-    //         clearCartOnServer();
-    //     }
-
-    //     // Reset state global
-    //     userAuthorized = false;
-    //     authorizedUserData = null;
-    //     isCheckoutComplete = false;
-
-    //     // Sembunyikan cart di main page
-    //     mainPageCartContainer.style.display = 'none';
-    //     mainPageAlert.style.display = 'none';
-
-    //     // Tampilkan lagi tombol "Mulai Peminjaman"
-    //     launchScannerBtn.style.display = 'inline-block';
-
-    //     // Tampilkan kembali tombol yang mungkin disembunyikan
-    //     mainCheckoutBtn.style.display = 'inline-block';
-    //     resetLoanBtn.style.display = 'inline-block';
-    //     scanMoreBtn.style.display = 'inline-block';
-
-    //     // Reset UI modal (untuk persiapan jika dibuka lagi)
-    //     resetModalToAuth();
-    // }
-
-    // // Reset UI modal ke state awal (scan auth)
-    // function resetModalToAuth() {
-    //     const scanModalLabel = document.getElementById('scanModalLabel');
-    //     if (scanModalLabel) scanModalLabel.textContent = 'Pindai QR Code User';
-
-    //     if (readerContainer) readerContainer.style.display = 'block';
-    //     scannerMessage.textContent = 'Arahkan kamera ke QR Code Anda untuk memulai...';
-    //     scannerMessage.className = 'alert alert-info mt-2';
-    // }
-
-    // Function untuk clear cart DI SERVER
-    function clearCartOnServer() {
-        if (!header_data['X-CSRF-TOKEN']) return;
-
-        fetch('/cart-loan/cart-clear', {
-            method: 'DELETE',
-            headers: header_data
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status) {
-                    console.log('Server cart cleared successfully.');
-                    location.reload();
-                } else {
-                    console.error('Failed to clear server cart:', data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error clearing server cart:', error);
-            });
-    }
-
-    // Clean up
-    window.addEventListener('beforeunload', function () {
-        stopScanner();
+    resetLoanBtn.addEventListener('click', () => {
+        Swal.fire({
+            title: "Tutup Sesi?",
+            text: "Keranjang akan dikosongkan dan sesi Anda akan ditutup.",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Ya, Tutup",
+            cancelButtonText: "Batal",
+            customClass: { confirmButton: "btn btn-danger", cancelButton: "btn btn-secondary" }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch('/cart-loan/cart-clear', { method: 'DELETE', headers: header_data })
+                .then(() => location.reload())
+                .catch(() => location.reload());
+            }
+        });
     });
 });

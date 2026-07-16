@@ -1,7 +1,10 @@
-<footer class="main-footer bg-section">
+<footer class="main-footer bg-section py-5 mb-0">
     <div class="container">
-        <div class="row">
-            <div class="col-md-6">
+        <div class="row justify-content-center align-items-center">
+            <div class="text-white text-center">
+                {!! data_get($siteIdentity, 'copyright.full_text', '© Politeknik Caltex Riau') !!}
+            </div>
+            <!-- <div class="col-md-6">
                 <div class="about-footer">
                     <div class="section-title">
                         <h2>
@@ -66,10 +69,12 @@
                         @endforeach
                     </ul>
                 </div>
-            </div>
+            </div> -->
+
+            <!-- <p class="footer-copyright-text">
+               
+            </p> -->
         </div>
     </div>
-    <p class="footer-copyright-text">
-        {!! data_get($siteIdentity, 'copyright.full_text', '© Politeknik Caltex Riau') !!}
-    </p>
+
 </footer>

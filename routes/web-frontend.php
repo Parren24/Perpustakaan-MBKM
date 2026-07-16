@@ -35,6 +35,9 @@ Route::name('frontend.')->group(function () {
 
     Route::prefix('/biblio')->name('biblio.')->controller(BiblioController::class)->group(function () {
         Route::get('/', 'index')->name('index');
+        Route::get('/pengembalian', 'returnLoanPage')->name('return-loan'); // ini Halaman
+        Route::get('/modul/modul-loan', 'modulLoanPage')->name('modul.modul-loan'); 
+        Route::get('/modul/modul-return', 'modulReturnPage')->name('modul.modul-return');
         Route::get('/item/{item_code}', 'getItemInformation')->name('item-info');
         Route::post('/authorize-session', 'authorizeSession')->name('authorize-session');
         Route::post('/add-to-cart', 'addBookToCartLoan')->name('add-to-cart');
@@ -46,6 +49,15 @@ Route::name('frontend.')->group(function () {
         // Mobile pages routes (no auth required for confirmation)
         Route::get('/konfirmasi/{token}', 'showConfirmation')->name('confirmation');
 
+
+        //#####################################################
+        Route::get('/kios/generate-qr-ajax', 'getKiosQrAjax')->name('kios.generate-qr-ajax');
+        Route::get('/kios/check-status/{sessionId}', 'checkKiosStatus')->name('kios.check-status');
+        Route::post('/kios/claim-session', 'claimKiosSession')->name('kios.claim-session');
+        //#####################################################
+
+
+
         // Routes that require biblio session
         Route::middleware(['web', 'session'])->group(function () {
             Route::get('/scan-buku', 'showScanBook')->name('scan-book');
@@ -53,15 +65,24 @@ Route::name('frontend.')->group(function () {
         });
     });
 
+    Route::get('/print/struk', function () {
+        return view('contents.frontend.pages.print.struk');
+    });
+
     Route::prefix('/cart-loan')->name('cart-loan.')->controller(CartLoanController::class)->group(function () {
         Route::post('/add-to-cart', 'addBookToCartLoan')->name('add-to-cart');
         Route::get('/cart-items', 'getCartItems')->name('cart-items');
+        Route::get('/cart-modul-items', 'getCartModulItems')->name('cart-modul-items');
+        Route::post('/add-modul-to-cart', 'addModulToCartLoan')->name('add-modul-to-cart');
         Route::delete('/cart-item', 'removeFromCart')->name('remove-from-cart');
         Route::delete('/cart-clear', 'clearCart')->name('clear-cart');
     });
 
     Route::prefix('/loan')->name('loan.')->controller(LoanController::class)->group(function () {
         Route::post('/complete-loan', 'completeLoan')->name('complete-loan');
+        Route::get('/active-loans', 'getLoan')->name('active-loans');
+        Route::post('/return-item', 'returnLoanItem')->name('return-item');
+        
     });
 
     Route::prefix('/item')->name('item.')->controller(ItemController::class)->group(function () {

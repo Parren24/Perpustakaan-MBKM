@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Session;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Carbon\Carbon;
 
 class BiblioService
@@ -32,6 +33,32 @@ class BiblioService
         return (object) [
             'title'       => data_get($peminjamanSettings, 'title', 'Peminjaman'),
             'description' => data_get($peminjamanSettings, 'description', 'Lakukan peminjaman buku.'),
+            // Add more fields as necessary
+        ];
+    }
+
+    public static function getContentReturn(): object
+    {
+        $identity = SiteIdentityService::getSiteIdentity();
+
+        $peminjamanSettings = data_get($identity, 'peminjaman_settings', []);
+
+        return (object) [
+            'title'       => data_get($peminjamanSettings, 'title', 'Pengembalian'),
+            'description' => data_get($peminjamanSettings, 'description', 'Lakukan pengembalian buku.'),
+            // Add more fields as necessary
+        ];
+    }
+
+    public static function getContentModul(): object
+    {
+        $identity = SiteIdentityService::getSiteIdentity();
+
+        $peminjamanSettings = data_get($identity, 'peminjaman_settings', []);
+
+        return (object) [
+            'title'       => data_get($peminjamanSettings, 'title', 'Modul'),
+            'description' => data_get($peminjamanSettings, 'description', 'Halaman Modul.'),
             // Add more fields as necessary
         ];
     }
@@ -278,14 +305,14 @@ class BiblioService
             }
 
             // Cek apakah ada pinjaman yang overdue
-            if (isset($loanInfo['overdue_count']) && $loanInfo['overdue_count'] > 0) {
-                return errResponse(403, 'Anda memiliki ' . $loanInfo['overdue_count'] . ' buku yang terlambat dikembalikan. Silakan kembalikan terlebih dahulu.');
-            }
+            // if (isset($loanInfo['overdue_count']) && $loanInfo['overdue_count'] > 0) {
+            //     return errResponse(403, 'Anda memiliki ' . $loanInfo['overdue_count'] . ' buku yang terlambat dikembalikan. Silakan kembalikan terlebih dahulu.');
+            // }
 
             // Cek apakah masih bisa meminjam
-            if (isset($loanInfo['can_borrow']) && !$loanInfo['can_borrow']) {
-                return errResponse(403, 'Anda sudah mencapai batas maksimal peminjaman harap dikembalikan terlebih dahulu(2 buku).');
-            }
+            // if (isset($loanInfo['can_borrow']) && !$loanInfo['can_borrow']) {
+            //     return errResponse(403, 'Anda sudah mencapai batas maksimal peminjaman harap dikembalikan terlebih dahulu(2 buku).');
+            // }
 
             // Set session untuk biblio user
             try {
@@ -375,4 +402,34 @@ class BiblioService
             ];
         }
     }
+
+    public static function generateKiosToken()
+    {
+        $sessionId = Str::random(32);
+        
+        Cache::put('kios_' . $sessionId, [
+            'status' => 'pending'
+        ], now()->addMinutes(10));
+
+        $scanUrl = url("/app/kios/scan/{$sessionId}");
+        $qrCode = QrCode::size(250)->generate($scanUrl);
+
+        // UBAH BAGIAN INI: Kembalikan array agar Controller mendapatkan sessionId
+        return [
+            'qrCode' => $qrCode,
+            'sessionId' => $sessionId
+        ];
+    }
+
+    public static function checkKiosStatus($sessionId)
+    {
+        $data = Cache::get('kios_'.$sessionId);
+
+        if (!$data) {
+            return response()->json(['status' => 'expired']);
+        }
+
+        return response()->json(['status' => $data['status']]);
+    }
+
 }

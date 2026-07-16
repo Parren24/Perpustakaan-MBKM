@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Collections\Collection;
+use App\Models\Biblio\LoanRules;
 use Carbon\Carbon;
 
 class ItemService
@@ -125,11 +126,25 @@ class ItemService
     //     return view('peminjaman.confirmation', ['item' => $item, 'token' => $token]);
     // }
 
+    public static function loanRules($memberId)
+    {
+        $loanRules = LoanRules::getLoanRules($memberId);
+
+        $loanLimit = $loanRules->loan_limit ?? 0;
+        $loanPeriode = $loanRules->loan_periode ?? 0;
+        $reborrowLimit = $loanRules->reborrow_limit ?? 0;
+        $fineEachDay = $loanRules->fine_each_day ?? 0;
+
+        return [$loanLimit, $loanPeriode, $reborrowLimit, $fineEachDay];
+    }
+
     public static function borrowItem($request)
     {
         $user = Auth::user();
         $cacheKey = 'biblio_token_' . $request->session_token;
         $sessionData = Cache::get($cacheKey);
+        $loanRules = self::loanRules($user->nomor_induk);
+        $loanLimit = $loanRules[0];
 
         if (!$sessionData) {
             return response()->json([
@@ -178,10 +193,10 @@ class ItemService
 
         // Cek batas maksimal peminjaman
         $activeLoanCount = self::getActiveLoanCount();
-        if ($activeLoanCount >= 2) {
+        if ($activeLoanCount >= $loanLimit) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Anda telah mencapai batas maksimal peminjaman (2 item). Mohon kembalikan item yang sudah dipinjam terlebih dahulu.'
+                'message' => "Anda telah mencapai batas maksimal peminjaman ({$loanLimit} item). Mohon kembalikan item yang sudah dipinjam terlebih dahulu."
             ], 400);
         }
 
@@ -244,7 +259,7 @@ class ItemService
                 ],
                 'loan_info' => [
                     'loan_id' => $loanId,
-                    'remaining_slots' => 2 - ($activeLoanCount + 1)
+                    'remaining_slots' => $loanLimit - ($activeLoanCount + 1)
                 ]
             ], 200);
         } catch (\Exception $e) {
@@ -362,7 +377,10 @@ class ItemService
      */
     public static function canBorrow(): bool
     {
-        return self::getActiveLoanCount() < 2;
+        $loanRules = self::loanRules(Auth::user()->nomor_induk);
+        $loanLimit = $loanRules[0];
+
+        return self::getActiveLoanCount() < $loanLimit;
     }
 
     /**
@@ -372,14 +390,17 @@ class ItemService
      */
     public static function getLoanInfo(): array
     {
+        $loanRules = self::loanRules(Auth::user()->nomor_induk);
+        $loanLimit = $loanRules[0];
+
         $activeLoanCount = self::getActiveLoanCount();
         $activeLoans = self::getActiveLoans();
         $canBorrow = self::canBorrow();
 
         return [
             'active_loan_count' => $activeLoanCount,
-            'max_loan_limit' => 2,
-            'remaining_slots' => max(0, 2 - $activeLoanCount),
+            'max_loan_limit' => $loanLimit,
+            'remaining_slots' => max(0, $loanLimit - $activeLoanCount),
             'can_borrow' => $canBorrow,
             'active_loans' => $activeLoans,
             'overdue_loans' => $activeLoans->filter(function ($loan) {

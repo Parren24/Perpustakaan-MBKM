@@ -4,6 +4,7 @@
     <div class="text-dark order-2 order-md-1">
         <span class="text-muted fw-semibold me-1">{{ date('Y') }} &copy;</span>
         <a href="https://pcr.ac.id" target="_blank" class="text-gray-800 text-hover-primary">BSTI Politeknik Caltex</a>
+        
     </div>
     <!--end::Copyright-->
     <!--begin::Menu-->

@@ -62,6 +62,11 @@ class AuthController extends Controller
 
             Auth::login($user, true);
 
+            // Check if user has member role and redirect to token page
+            if ($user->hasRole(['member', 'mahasiswa'])) {
+                return redirect()->route('app.user.show', ['param1' => 'token']);
+            }
+
             return redirect()->intended('/app/dashboard');
         } catch (\Exception $e) {
             return redirect()->route('login')->with('error', 'Google login failed!');

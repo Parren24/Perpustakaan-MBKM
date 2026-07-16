@@ -20,8 +20,53 @@ class LoanController extends Controller
             );
             return $content;
         } catch (\Exception $e) {
-            Log::error('BiblioController completeLoan error: ' . $e->getMessage());
-           
+            Log::error('LoanController completeLoan error: ' . $e->getMessage());
+
+            return errResponse(500, 'Terjadi kesalahan sistem. Silakan coba lagi.');
+        }
+    }
+
+    public function returnLoanItem(Request $request)
+    {
+        try {
+            $content = SafeDataService::safeExecute(
+                function () use ($request) {
+                    $memberData = \Illuminate\Support\Facades\Session::get('biblio_user');
+                    return LoanService::returnLoanItem($request->loan_id, $memberData);
+                }
+            );
+            return $content;
+        } catch (\Exception $e) {
+            Log::error('LoanController returnLoanItem error: ' . $e->getMessage());
+
+            return errResponse(500, 'Terjadi kesalahan sistem. Silakan coba lagi.');
+        }
+    }
+
+    public function getLoan(): JsonResponse
+    {
+        try {
+            $content = SafeDataService::safeExecute(
+                fn() => LoanService::getLoan()
+            );
+            return $content;
+        } catch (\Exception $e) {
+            Log::error('LoanController getLoan error: ' . $e->getMessage());
+
+            return errResponse(500, 'Terjadi kesalahan sistem. Silakan coba lagi.');
+        }
+    }
+
+    public function LoanPenalty(): JsonResponse
+    {
+        try {
+            $content = SafeDataService::safeExecute(
+                fn() => LoanService::LoanPenalty()
+            );
+            return $content;
+        } catch (\Exception $e) {
+            Log::error('LoanController LoanPenalty error: ' . $e->getMessage());
+
             return errResponse(500, 'Terjadi kesalahan sistem. Silakan coba lagi.');
         }
     }

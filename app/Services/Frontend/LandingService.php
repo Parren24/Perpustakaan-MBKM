@@ -16,9 +16,9 @@ class LandingService
     {
         return [
             'header'      => '',
-            'title'       => 'Beranda',
+            'title'       => 'Peminjaman Buku',
             'subtitle'    => '',
-            'description' => 'Lakukan PEminjaman Buku dengan mudah melalui Aplikasi Perpustakaan Politeknik Caltex Riau',
+            'description' => 'Lakukan Peminjaman Buku Dengan Mudah Melalui Sistem Peminjaman',
         ];
     }
 

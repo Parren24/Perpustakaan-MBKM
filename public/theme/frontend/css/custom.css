@@ -607,12 +607,14 @@ header.main-header .header-sticky {
     position: relative;
     top: 0;
     z-index: 100;
+    background: var(--primary-color);
 }
 
 header.main-header .header-sticky.hide {
     transform: translateY(-100%);
     transition: transform 0.3s var(--bezier-main);
     border-radius: 0;
+    
 }
 
 header.main-header .header-sticky.active {
@@ -638,7 +640,7 @@ header.main-header .header-sticky.active .container-fluid::before {
     width: 100%;
     max-width: 1560px;
     margin: 0 auto;
-    padding: 20px 0;
+    padding: 0;
     align-items: center;
 }
 
@@ -707,6 +709,18 @@ header.main-header .header-sticky.active .container-fluid::before {
 .main-menu ul li {
     margin: 0;
     position: relative;
+}
+
+.main-menu .navbar-nav > li {
+    border-radius: 50px;
+    background-color: var(--primary-color);
+    margin-inline: 4px;
+    transition: background-color 0.3s ease;
+}
+
+header.main-header .header-sticky.active .main-menu .navbar-nav > li {
+    background-color: transparent;
+    
 }
 
 @keyframes header-menu-underline-in {
@@ -8390,7 +8404,7 @@ main .bg-hero {
     .navbar {
         max-width: 100%;
         padding-inline: 30px;
-        margin-top: 12px;
+        margin-top: 0;
     }
 
     /* .navbar-brand {
@@ -10571,3 +10585,34 @@ main .bg-hero {
     max-height: 50px;
     object-fit: contain;
 }
+
+/* Custom Button Styles */
+.btn-light-danger {
+    background-color: var(--secondary-50) !important;
+    color: var(--secondary-main) !important;
+    border: 1px solid transparent;
+}
+.btn-light-danger:hover, .btn-light-danger:focus {
+    background-color: var(--secondary-main) !important;
+    color: var(--white-color) !important;
+}
+
+.btn-light-dark {
+    background-color: var(--gray-200) !important;
+    color: var(--black) !important;
+    border: 1px solid transparent;
+}
+.btn-light-dark:hover, .btn-light-dark:focus {
+    background-color: var(--black) !important;
+    color: var(--white-color) !important;
+}
+
+.btn-light-primary {
+    background-color: var(--primary-50) !important;
+    color: var(--primary-main) !important;
+    border: 1px solid transparent;
+}
+.btn-light-primary:hover, .btn-light-primary:focus {
+    background-color: var(--primary-main) !important;
+    color: var(--white-color) !important;
+} 

@@ -72,4 +72,31 @@ class CartLoanController extends Controller
             return errResponse(500, 'Terjadi kesalahan sistem. Silakan coba lagi.');
         }
     }
+
+
+    public function getCartModulItems()
+    {
+        try {
+            $content = SafeDataService::safeExecute(
+                fn() => CartLoanService::getCartModulItems()
+            );
+            return $content;
+        } catch (\Exception $e) {
+            Log::error('CartLoanController getCartModulItems error: ' . $e->getMessage());
+            return errResponse(500, 'Terjadi kesalahan sistem. Silakan coba lagi.');
+        }
+    }
+
+    public function addModulToCartLoan(Request $request) 
+    {
+        try {
+            $content = SafeDataService::safeExecute(
+                fn() => CartLoanService::addModulToCartLoan($request)
+            );
+            return $content;
+        } catch (\Exception $e) {
+            Log::error('CartLoanController addModulToCartLoan error: ' . $e->getMessage());
+            return errResponse(500, 'Terjadi kesalahan sistem. Silakan coba lagi.');
+        }
+    }
 }

@@ -28,6 +28,19 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        $user = $request->user();
+        
+        // Debugging: Log user roles
+        \Illuminate\Support\Facades\Log::info('User Login:', [
+            'email' => $user->email, 
+            'roles' => $user->getRoleNames()->toArray()
+        ]);
+
+        // Check for 'member' or 'mahasiswa' role
+        if ($user->hasRole(['member', 'mahasiswa'])) {
+            return redirect()->route('app.user.show', ['param1' => 'token']);
+        }
+
         return redirect()->intended(route('dashboard', absolute: false));
     }
 

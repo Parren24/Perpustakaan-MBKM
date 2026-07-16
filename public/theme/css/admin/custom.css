@@ -48,3 +48,37 @@ table.dataTable>tbody>tr.selected>* {
 table .dttable-check.form-check-input {
     border: 2px solid var(--bs-gray-300) !important;
 }
+
+/* Custom Light Buttons for SweetAlert */
+.btn-light-danger {
+    color: #f1416c !important;
+    border-color: transparent !important;
+    background-color: #fff5f8 !important;
+}
+.btn-light-danger:hover {
+    color: #ffffff !important;
+    background-color: #f1416c !important;
+    border-color: #f1416c !important;
+}
+
+.btn-light-primary {
+    color: #009ef7 !important;
+    border-color: transparent !important;
+    background-color: #f1faff !important;
+}
+.btn-light-primary:hover {
+    color: #ffffff !important;
+    background-color: #009ef7 !important;
+    border-color: #009ef7 !important;
+}
+
+.btn-light-dark {
+    color: #181c32 !important;
+    border-color: transparent !important;
+    background-color: #eff2f5 !important;
+}
+.btn-light-dark:hover {
+    color: #ffffff !important;
+    background-color: #181c32 !important;
+    border-color: #181c32 !important;
+}

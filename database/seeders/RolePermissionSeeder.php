@@ -37,6 +37,11 @@ class RolePermissionSeeder extends Seeder
             'biblio-edit',
             'biblio-delete',
             'biblio-export',
+            // Loans
+            'loan-list',
+            'loan-create',
+            'loan-edit',
+            'loan-delete',
         ];
 
         foreach ($permissions as $permission) {
@@ -45,35 +50,27 @@ class RolePermissionSeeder extends Seeder
         $this->command->info('Permissions created successfully.');
 
         // 2. Buat Roles dan berikan permissions
-        // Role 'Administrator' -> bisa melakukan segalanya
-        $administratorRole = Role::firstOrCreate(['name' => 'administrator']);
+        // Role 'super-admin' -> bisa melakukan segalanya
+        $administratorRole = Role::firstOrCreate(['name' => 'super-admin']);
         $administratorRole->givePermissionTo(Permission::all());
 
-        // Role 'Admin' -> bisa mengelola user dan biblio
-        $adminRole = Role::firstOrCreate(['name' => 'admin']);
-        $adminRole->givePermissionTo([
+        // Role 'pustakawan' -> Dashboard, Biblio, Member, Role
+        $pustakawanRole = Role::firstOrCreate(['name' => 'pustakawan']);
+        $pustakawanRole->givePermissionTo([
             'dashboard-view',
-            'user-list',
-            'user-create',
-            'user-edit',
-            'user-delete',
-            'biblio-list',
-            'biblio-create',
-            'biblio-edit',
-            'biblio-delete',
-            'biblio-export',
+            'biblio-list', 'biblio-create', 'biblio-edit', 'biblio-delete', 'biblio-export',
+            'user-list', 'user-create', 'user-edit', 'user-delete',
+            'role-list', 'role-create', 'role-edit', 'role-delete',
         ]);
 
-        // Role 'User' -> hanya bisa melihat biblio dan export
-        $userRole = Role::firstOrCreate(['name' => 'user']);
-        $userRole->givePermissionTo([
-            'dashboard-view',
-            'biblio-list',
-            'biblio-export',
-        ]);
+        // Role 'member' -> /generate-token, /user/loan-history, Loans
+        $memberRole = Role::firstOrCreate(['name' => 'member']);
+        // Member permissions might be handled by logic or basic auth, but giving them specific permissions helps future proofing.
+        // If 'Loans' page for member requires a permission, add it. Assuming no specific permission needed for now based on request.
+        
         $this->command->info('Roles created and permissions assigned successfully.');
 
-        // 3. Buat atau update user utama dan berikan role 'Administrator'
+        // 3. Buat atau update user utama dan berikan role 'Super Admin'
         $adminUser = User::firstOrCreate(
             ['email' => 'varrent22si@mahasiswa.pcr.ac.id'], // Cari berdasarkan email
             [
@@ -81,7 +78,7 @@ class RolePermissionSeeder extends Seeder
                 'password' => Hash::make('password123'), // Atur password default yang kuat
             ]
         );
-        $adminUser->assignRole('Administrator');
-        $this->command->info('Administrator role assigned to ' . $adminUser->email);
+        $adminUser->assignRole('super-admin');
+        $this->command->info('Super Admin role assigned to ' . $adminUser->email);
     }
 }

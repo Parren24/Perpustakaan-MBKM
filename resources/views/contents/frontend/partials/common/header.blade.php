@@ -5,7 +5,7 @@
 
 <header class="main-header">
     <div class="header-sticky">
-        <nav class="navbar navbar-expand-xxl" {{ Route::currentRouteName() == 'frontend.home' ? 'data-is-home' : '' }}>
+        <nav class="navbar navbar-expand-xxl py-1">
             <div class="container-fluid">
                 <a class="navbar-brand mt-md-2" href="{{ route('frontend.home') }}">
                     <img src="{{ data_get($siteIdentity, 'identity.logo_path') }}" alt="Logo" class="navbar-logo">
@@ -37,6 +37,9 @@
                                 @endphp
                                 <li class="{{ $class }}">
                                     <a class="nav-link" href="{{ $route }}">
+                                        @if (isset($menu_item['icon']))
+                                            <i class="{{ $menu_item['icon'] }} me-1"></i>
+                                        @endif
                                         {{ $menu_item['name'] }}
                                     </a>
                                     @if (isset($menu_item['children']))
@@ -52,6 +55,9 @@
                                                 @endphp
                                                 <li class="{{ $child_class }}">
                                                     <a class="nav-link" href="{{ $child_route }}">
+                                                        @if (isset($child['icon']))
+                                                            <i class="{{ $child['icon'] }} me-1"></i>
+                                                        @endif
                                                         {{ $child['name'] }}
                                                     </a>
                                                     @if (isset($child['children']))
@@ -75,12 +81,28 @@
                                     @endif
                                 </li>
                             @endforeach
+                        <li class="nav-item d-md-none">
+                                <a class="nav-link" href="{{ route('login.google', ['provider' => 'google']) }}">
+                                    Login
+                                </a>
+                            </li>
                         </ul>
                     </div>
+                </div>
+
+                <div class="header-btn-- d-inline-flex d-none d-md-block mt-md-2">
+                    <a href="{{ route('login.google', ['provider' => 'google']) }}"
+                        class="btn-default btn-highlighted text-nowrap contact-button-">
+                        Login
+                    </a>
                 </div>
                 <div class="navbar-toggle"></div>
             </div>
         </nav>
-        <div class="responsive-menu slicknav_state"></div>
+        <div class="responsive-menu slicknav_state">
+
+        
+        </div>
     </div>
+    
 </header>

@@ -20,10 +20,10 @@ class RoleController extends Controller
         $this->breadCrump[] = ['title' => 'User Management', 'link' => '#'];
 
         // Melindungi controller dengan middleware permission
-        $this->middleware('permission:role-list', ['only' => ['index', 'data']]);
-        $this->middleware('permission:role-create', ['only' => ['store']]);
-        $this->middleware('permission:role-edit', ['only' => ['show', 'update']]);
-        $this->middleware('permission:role-delete', ['only' => ['destroy']]);
+        // $this->middleware('permission:role-list', ['only' => ['index', 'data']]);
+        // $this->middleware('permission:role-create', ['only' => ['store']]);
+        // $this->middleware('permission:role-edit', ['only' => ['show', 'update']]);
+        // $this->middleware('permission:role-delete', ['only' => ['destroy']]);
     }
 
     /**

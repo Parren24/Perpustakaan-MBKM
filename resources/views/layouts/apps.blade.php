@@ -3,7 +3,12 @@
 <!--begin::Head-->
 
 <head>
-    <title>{{ config('app.name', 'Laravel') }}</title>
+    <title>
+        {{ config('app.name', 'Laravel') }}
+        @if(isset($pageData->title) && $pageData->title)
+        | {{ $pageData->title }}
+        @endif
+    </title>
 
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -96,12 +101,12 @@
                 <!--end:::Main-->
 
                 <!--begin::aside-->
-                <div id="kt_app_aside" class="app-aside flex-column bg-theme" data-kt-drawer="true"
+                <!-- <div id="kt_app_aside" class="app-aside flex-column bg-theme" data-kt-drawer="true"
                     data-kt-drawer-name="app-aside" data-kt-drawer-activate="{default: true, lg: false}"
                     data-kt-drawer-overlay="true" data-kt-drawer-width="auto" data-kt-drawer-direction="end"
                     data-kt-drawer-toggle="#kt_app_aside_mobile_toggle">
-                    @include('layouts.inc.aside')
-                </div>
+                    
+                </div> -->
                 <!--end::aside-->
             </div>
             <!--end::Wrapper-->

@@ -99,6 +99,8 @@ return [
 
     'key' => env('APP_KEY'),
 
+    
+
     'previous_keys' => [
         ...array_filter(
             explode(',', env('APP_PREVIOUS_KEYS', ''))
@@ -150,6 +152,11 @@ return [
         Illuminate\Validation\ValidationServiceProvider::class,
         Illuminate\View\ViewServiceProvider::class,
         Yajra\DataTables\HtmlServiceProvider::class,
+        Barryvdh\DomPDF\ServiceProvider::class,
+        Rawilk\Printing\PrintingServiceProvider::class,
+
+
+        
 
         /*
      * Package Service Providers...

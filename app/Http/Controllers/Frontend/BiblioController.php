@@ -29,6 +29,37 @@ class BiblioController extends Controller
         return view('contents.frontend.pages.biblio.index', compact('content', 'pageConfig'));
     }
 
+    public function returnLoanPage()
+    {
+
+        $content = SafeDataService::safeExecute(
+            fn() => BiblioService::getContentReturn(),
+            SafeDataService::getPeminjamanFallbacks()->content
+        );
+
+        $pageConfig = SafeDataService::safeExecute(
+            fn() => BiblioService::getPageConfig(),
+            SafeDataService::getPageConfigFallbacks()
+        );
+
+        return view('contents.frontend.pages.biblio.return-loan', compact('content', 'pageConfig'));
+    }
+
+    public function modulLoanPage()
+    {
+        $content = SafeDataService::safeExecute(
+            fn() => BiblioService::getContentModul(),
+            SafeDataService::getPeminjamanFallbacks()->content
+        );
+
+        $pageConfig = SafeDataService::safeExecute(
+            fn() => BiblioService::getPageConfig(),
+            SafeDataService::getPageConfigFallbacks()
+        );
+
+        return view('contents.frontend.pages.biblio.modul.modul-loan', compact('content', 'pageConfig'));
+    }
+
     public function getItemInformation(Request $request, $item_code)
     {
         $content = SafeDataService::safeExecute(
@@ -85,22 +116,52 @@ class BiblioController extends Controller
     /**
      * Show mobile cart page
      */
-    public function showCart()
+    public function getKiosQrAjax()
     {
-        $memberData = Session::get('biblio_user');
-        if (!$memberData) {
-            return redirect()->route('frontend.biblio.index')
-                ->with('error', 'Sesi tidak valid. Silakan scan QR code lagi.');
+        $data = BiblioService::generateKiosToken();
+        return response()->json([
+            'status' => true,
+            'qrCode' => (string) $data['qrCode'], // SVG format
+            'sessionId' => $data['sessionId']
+        ]);
+    }
+
+    public function checkKiosStatus($sessionId)
+    {
+        $data = Cache::get('kios_' . $sessionId);
+        if (!$data) {
+            return response()->json(['status' => 'expired']);
+        }
+        return response()->json(['status' => $data['status']]);
+    }
+
+    public function claimKiosSession(Request $request)
+    {
+        $sessionId = $request->input('session_id');
+        $kiosData = Cache::get('kios_' . $sessionId);
+
+        if (!$kiosData || $kiosData['status'] !== 'scanned') {
+            return response()->json(['status' => false, 'message' => 'Sesi tidak valid.']);
         }
 
-        $pageConfig = SafeDataService::safeExecute(
-            fn() => BiblioService::getPageConfig(),
-            SafeDataService::getPageConfigFallbacks()
-        );
+        // Buat sesi lokal untuk Kios agar bisa checkout
+        Session::put('biblio_user', [
+            'user_id'            => $kiosData['user_id'],
+            'name'               => $kiosData['name'],
+            'nomor_induk'        => $kiosData['nomor_induk'],
+            'member_name'        => $kiosData['name'],
+            'authorized_at'      => now()->toISOString(),
+            'session_expires_at' => now()->addMinutes(10)->toISOString()
+        ]);
 
-        return view('contents.frontend.pages.biblio.cart', [
-            'memberData' => $memberData,
-            'pageConfig' => $pageConfig
+        Cache::forget('kios_' . $sessionId); // Hapus agar tidak dipakai ulang
+
+        return response()->json([
+            'status' => true,
+            'data' => [
+                'member_name' => $kiosData['name'],
+                'nomor_induk' => $kiosData['nomor_induk']
+            ]
         ]);
     }
 

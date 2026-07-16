@@ -10,6 +10,36 @@ class HeaderMenuComposer
 {
     public function compose(View $view)
     {
+        $menu = [
+            [
+                'name'  => 'Peminjaman Buku',
+                'route' => route('frontend.home'),
+                'icon'  => 'fas fa-book',
+            ],
+
+            [
+                'name'  => 'Pengembalian Buku',
+                'route' => route('frontend.biblio.return-loan'),
+                'icon'  => 'fas fa-undo',
+            ],
+            [
+                'name'  => 'Modul',
+                'route' => 'javascript:void(0);', // Diubah menjadi '#' karena ini adalah tombol dropdown
+                'icon'  => 'fas fa-book-open',
+                'children' => [ // Tambahkan array submenu di sini
+                    [
+                        'name'  => 'Peminjaman Modul',
+                        'route' => route('frontend.biblio.modul.modul-loan'), // Pastikan route ini sudah kamu buat di web.php
+                        'icon'  => 'fas fa-hand-holding', // Icon bisa disesuaikan
+                    ],
+                    [
+                        'name'  => 'Pengembalian Modul',
+                        'route' => route('frontend.biblio.modul.modul-return'), // Pastikan route ini sudah kamu buat di web.php
+                        'icon'  => 'fas fa-undo-alt', // Icon bisa disesuaikan
+                    ],
+                ]
+            ],
+        ];
         // Build the menu here so blade stays clean
         // $jurusanList = Jurusan::inRandomOrder()->get()->map(function ($item) {
         //     return (object) [
@@ -207,6 +237,6 @@ class HeaderMenuComposer
     //         // ],
     //     ];
 
-    //     $view->with('menu', $menu);
+        $view->with('menu', $menu);
     }
 }

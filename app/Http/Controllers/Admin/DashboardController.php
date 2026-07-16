@@ -14,6 +14,9 @@ use Illuminate\Http\JsonResponse;
 use Yajra\DataTables\Html\Column;
 use Illuminate\Support\Facades\Blade;
 use App\Models\Master\KaryaJenis;
+use App\Models\Biblio\Loan;
+use App\Models\Penalties;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -24,6 +27,7 @@ class DashboardController extends Controller
          */
         $this->activeRoot   = '';
         // $this->breadCrump[] = ['title' => 'Dashboard', 'link' => url('')];
+        // $this->middleware('permission:dashboard-view', ['only' => ['index', 'data']]);
     }
 
     function index()
@@ -32,18 +36,55 @@ class DashboardController extends Controller
         $this->activeMenu   = 'dashboard';
         $this->breadCrump[] = ['title' => 'Dashboard', 'link' => url()->current()];
 
-        // $builder   = app('datatables.html');
-        // $dataTable = $builder->serverSide(true)->ajax(route('app.karya-jenis.data') . '/list')->columns([
-        //     Column::make(['width' => '', 'title' => '', 'data' => 'action', 'orderable' => false, 'className' => 'text-nowrap text-end']),
-        //     Column::make(['width' => '5%', 'title' => 'No', 'data' => 'no', 'orderable' => false, 'className' => 'text-center']),
-        //     Column::make(['width' => '', 'title' => 'Kode Karya', 'data' => 'alias', 'orderable' => true]),
-        //     Column::make(['width' => '', 'title' => 'Jenis Karya', 'data' => 'jenis_karya', 'orderable' => true]),
-        //     Column::make(['width' => '', 'title' => 'Jenjang Pendidikan', 'data' => 'jenjang_pendidikan', 'orderable' => true]),
+        // Determine target year from latest data or current year
+        $latestLoan = Loan::selectRaw('MAX(YEAR(loan_date)) as year')->value('year');
+        $targetYear = $latestLoan ? $latestLoan : date('Y');
 
-        // ]);
+        // Data Chart 1: Peminjaman per Bulan
+        $loansData = Loan::selectRaw('MONTH(loan_date) as month, COUNT(*) as total')
+            ->whereYear('loan_date', $targetYear)
+            ->groupBy(DB::raw('MONTH(loan_date)'))
+            ->orderBy('month')
+            ->pluck('total', 'month')
+            ->toArray();
+
+        // Data Chart 2: Peminjaman Belum Kembali per Bulan (Origin Loan Date)
+        $unreturnedData = Loan::selectRaw('MONTH(loan_date) as month, COUNT(*) as total')
+            ->whereYear('loan_date', $targetYear)
+            ->where('is_return', 0)
+            ->groupBy(DB::raw('MONTH(loan_date)'))
+            ->orderBy('month')
+            ->pluck('total', 'month')
+            ->toArray();
+
+        // Data Chart 3: Total Denda per Bulan (Using same target year for consistency)
+        $penaltyData = Penalties::selectRaw('MONTH(created_at) as month, SUM(amount) as total')
+            ->whereYear('created_at', $targetYear)
+            ->groupBy(DB::raw('MONTH(created_at)'))
+            ->orderBy('month')
+            ->pluck('total', 'month')
+            ->toArray();
+
+        // Prepare data for charts (filling missing months with 0)
+        $months = range(1, 12);
+        $chartLoans = [];
+        $chartUnreturned = [];
+        $chartPenalties = [];
+        $chartMonths = [];
+
+        foreach ($months as $m) {
+            $chartLoans[] = $loansData[$m] ?? 0;
+            $chartUnreturned[] = $unreturnedData[$m] ?? 0;
+            $chartPenalties[] = $penaltyData[$m] ?? 0;
+            $chartMonths[] = date("F", mktime(0, 0, 0, $m, 1));
+        }
 
         $this->dataView([
-            // 'dataTable' => $dataTable
+            'chartYear' => $targetYear,
+            'chartLoans' => $chartLoans,
+            'chartUnreturned' => $chartUnreturned,
+            'chartPenalties' => $chartPenalties,
+            'chartMonths' => $chartMonths
         ]);
 
         return $this->view('admin.dashboard');

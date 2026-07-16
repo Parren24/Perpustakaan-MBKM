@@ -20,19 +20,19 @@
         <!--begin::Logo-->
         <a href="{{ url('/') }}" class="app-sidebar-logo">
             <img alt="Logo" src="{{ asset('theme') }}/media/logos/default.png" class="h-25px h-md-30px theme-light-show" />
-            <img alt="Logo" src="{{ asset('theme') }}/media/logos/default-dark.png" class="h-25px h-md-30px theme-dark-show" />
+            <img alt="Logo" src="{{ asset('theme') }}/media/logos/default.png" class="h-25px h-md-30px theme-dark-show" />
         </a>
+
+        <!-- D:\Framework\base-laravel-fe\src\public\theme\media\logos\default.png -->
         <!--end::Logo-->
     </div>
     <!--begin::Navbar-->
     <div class="app-navbar flex-grow-1 justify-content-end" id="kt_app_header_navbar">
-        <div class="app-navbar-item d-flex align-items-stretch flex-lg-grow-1">
-            @include('layouts.inc.header_app')
-        </div>
+        
 
 
 
-        @include('layouts.inc.header_notif')
+        
 
         <!--begin::User menu-->
         <div class="app-navbar-item" id="kt_header_user_menu_toggle">
@@ -55,7 +55,7 @@
                             <div class="fw-bold d-flex align-items-center fs-5">
                                 {{ Auth::user()->name }}
                             </div>
-                            <span class="fw-semibold text-muted fs-7">{{ Auth::user()->email }}</span>
+                            <span class="fw-semibold text-muted d-flex fs-9">{{ Auth::user()->email }}</span>
                         </div>
                         <!--end::Username-->
                     </div>
@@ -128,9 +128,12 @@
         <!--begin::Action-->
         <div class="d-none d-md-inline app-navbar-item ms-2 mx-lg-2">
             <!--begin::Link-->
-            <a href="{{ asset('demo39/dist/authentication/layouts/corporate/sign-in.html') }}" class="btn btn-icon btn-custom btn-color-gray-600 btn-active-color-primary w-35px h-35px w-md-40px h-md-40px">
-                <i class="ki-outline ki-exit-right fs-1"></i>
-            </a>
+            <form method="POST" action="{{ route('logout') }}">
+                @csrf
+                <button type="submit" class="btn btn-icon btn-custom btn-color-danger btn-active-color-primary w-35px h-35px w-md-40px h-md-40px">
+                    <i class="ki-outline ki-exit-right fs-1"></i>
+                </button>
+            </form>
             <!--end::Link-->
         </div>
         <!--end::Action-->

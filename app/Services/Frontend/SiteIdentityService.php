@@ -25,11 +25,12 @@ class SiteIdentityService
             'description'      => 'Politeknik Caltex Riau adalah institusi pendidikan vokasi terkemuka yang menghasilkan lulusan berkualitas dan siap bersaing di tingkat global.',
             'established_year' => 2001, // Tahun berdiri
             'current_year'     => date('Y'),
-            'logo_path'        => asset('theme/frontend/images/logo-pcr-unggul.webp'),
+            'logo_path'        => asset('theme/frontend/images/logo-portal (1).webp'),
             'hero_settings'    => [
                 'show_default_slide' => true, // Control default slide visibility
             ]
         ];
+
     }
 
     /**
