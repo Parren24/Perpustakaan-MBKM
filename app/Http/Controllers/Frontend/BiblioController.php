@@ -146,10 +146,8 @@ class BiblioController extends Controller
 
         // Buat sesi lokal untuk Kios agar bisa checkout
         Session::put('biblio_user', [
-            'user_id'            => $kiosData['user_id'],
-            'name'               => $kiosData['name'],
-            'nomor_induk'        => $kiosData['nomor_induk'],
-            'member_name'        => $kiosData['name'],
+            'member_id'          => $kiosData['member_id'],
+            'member_name'        => $kiosData['member_name'],
             'authorized_at'      => now()->toISOString(),
             'session_expires_at' => now()->addMinutes(10)->toISOString()
         ]);
@@ -159,8 +157,8 @@ class BiblioController extends Controller
         return response()->json([
             'status' => true,
             'data' => [
-                'member_name' => $kiosData['name'],
-                'nomor_induk' => $kiosData['nomor_induk']
+                'member_name' => $kiosData['member_name'],
+                'member_id' => $kiosData['member_id']
             ]
         ]);
     }

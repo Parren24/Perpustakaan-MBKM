@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Biblio\Member;
 use Laravel\Socialite\Facades\Socialite;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
@@ -42,7 +43,7 @@ class AuthController extends Controller
             //     return redirect()->route('login')->with('error', 'Email tidak diizinkan untuk login.');
             // }
 
-            $user = User::where('email', $googleUser->getEmail())->first();
+            $user = Member::where('member_email', $googleUser->getEmail())->first();
 
             // if (!$user) {
             //     $user = User::create([
@@ -55,10 +56,10 @@ class AuthController extends Controller
                 return redirect()->route('login')->with('error', 'Akun tidak ditemukan. Silakan hubungi administrator.');
             }
 
-            $user->update([
-                'name' => $googleUser->getName(),
-                'google_id' => $googleUser->getId(),
-            ]);
+            // $user->update([
+            //     'name' => $googleUser->getName(),
+            //     'member_email' => $googleUser->getEmail(),
+            // ]);
 
             Auth::login($user, true);
 

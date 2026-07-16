@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::connection('mysql_opac')->create('cart_loan', function (Blueprint $table) {
             $table->id('loan_id'); // Primary Key
-            $table->integer('member_id');
+            $table->bigInteger('member_id');
             $table->dateTime('tanggal');
             $table->json('list_item');
             $table->timestamps();

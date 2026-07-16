@@ -94,172 +94,172 @@ class UserController extends Controller
         abort(404, 'Halaman tidak ditemukan');
     }
 
-    public function syncAPIMahasiswa(Request $req): JsonResponse
-    {
-        // 1. Validasi Input
-        $angkatan = $req->input('angkatan');
-        $prodi    = $req->input('prodi');
-        $apiKey = trim(config('services.pcr.key'));
+    // public function syncAPIMahasiswa(Request $req): JsonResponse
+    // {
+    //     // 1. Validasi Input
+    //     $angkatan = $req->input('angkatan');
+    //     $prodi    = $req->input('prodi');
+    //     $apiKey = trim(config('services.pcr.key'));
 
-        // 2. Tembak API
-        $response = Http::withHeaders([
-            'apikey' => $apiKey,
-            'Accept' => 'application/json'
-        ])->withQueryParameters([
-            // Ini sesuai tab Params di image pertama
-            'collection' => 'angkatan-prodi',
-            'angkatan'   => $angkatan,
-            'prodi'      => $prodi,
-        ])->post('https://v2.api.pcr.ac.id/api/akademik-mahasiswa');
+    //     // 2. Tembak API
+    //     $response = Http::withHeaders([
+    //         'apikey' => $apiKey,
+    //         'Accept' => 'application/json'
+    //     ])->withQueryParameters([
+    //         // Ini sesuai tab Params di image pertama
+    //         'collection' => 'angkatan-prodi',
+    //         'angkatan'   => $angkatan,
+    //         'prodi'      => $prodi,
+    //     ])->post('https://v2.api.pcr.ac.id/api/akademik-mahasiswa');
 
-        if ($response->successful()) {
-            $mahasiswaList = $response->json('items') ?? $response->json('data') ?? [];
+    //     if ($response->successful()) {
+    //         $mahasiswaList = $response->json('items') ?? $response->json('data') ?? [];
 
-            if (empty($mahasiswaList)) {
-                return response()->json(['status' => false, 'message' => 'Tidak ada data ditemukan. Response: ' . $response->body()], 404);
-            }
+    //         if (empty($mahasiswaList)) {
+    //             return response()->json(['status' => false, 'message' => 'Tidak ada data ditemukan. Response: ' . $response->body()], 404);
+    //         }
 
-            $dataToSync = [];
-            $allNims    = [];
-            // Optimization: Calculate password hash once
-            $defaultPassword = Hash::make('pcr123');
+    //         $dataToSync = [];
+    //         $allNims    = [];
+    //         // Optimization: Calculate password hash once
+    //         $defaultPassword = Hash::make('pcr123');
 
-            foreach ($mahasiswaList as $mahasiswa) {
+    //         foreach ($mahasiswaList as $mahasiswa) {
 
-                $nim = $mahasiswa['nim'];
-                $allNims[] = $nim;
+    //             $nim = $mahasiswa['nim'];
+    //             $allNims[] = $nim;
 
-                $dataToSync[] = [
-                    'nomor_induk' => $nim,
-                    'name'        => $mahasiswa['nama'],
-                    'email'       => $mahasiswa['email'],
-                    'prodi'       => $prodi, // Dinamis berdasarkan input
-                    'posisi'      => 'Mahasiswa', // Tetap mahasiswa
-                    'password'    => $defaultPassword,
-                    'created_at'  => now(),
-                    'updated_at'  => now(),
-                ];
-            }
+    //             $dataToSync[] = [
+    //                 'nomor_induk' => $nim,
+    //                 'name'        => $mahasiswa['nama'],
+    //                 'email'       => $mahasiswa['email'],
+    //                 'prodi'       => $prodi, // Dinamis berdasarkan input
+    //                 'posisi'      => 'Mahasiswa', // Tetap mahasiswa
+    //                 'password'    => $defaultPassword,
+    //                 'created_at'  => now(),
+    //                 'updated_at'  => now(),
+    //             ];
+    //         }
 
-            // 3. UPSERT: Update jika NIM sudah ada, Create jika belum ada.
-            User::upsert($dataToSync, ['nomor_induk'], ['name', 'email', 'prodi', 'posisi', 'updated_at']);
+    //         // 3. UPSERT: Update jika NIM sudah ada, Create jika belum ada.
+    //         User::upsert($dataToSync, ['nomor_induk'], ['name', 'email', 'prodi', 'posisi', 'updated_at']);
 
-            // 4. Assign Roles & Sync to OPAC
-            // Optimization: Fetch only affected users in one query
-            $users = User::whereIn('nomor_induk', $allNims)->get();
+    //         // 4. Assign Roles & Sync to OPAC
+    //         // Optimization: Fetch only affected users in one query
+    //         $users = User::whereIn('nomor_induk', $allNims)->get();
 
-            foreach ($users as $user) {
-                $user->assignRole('member'); // Assign role member
+    //         foreach ($users as $user) {
+    //             $user->assignRole('member'); // Assign role member
 
-                // Sync to OPAC
-                try {
-                    $this->insertToOpac([
-                        'nomor_induk' => $user->nomor_induk,
-                        'email'       => $user->email,
-                        'password'    => $user->password, // Already hashed
-                    ]);
-                } catch (\Throwable $e) {
-                    Log::error("Gagal sync ke OPAC untuk NIM {$user->nomor_induk}: " . $e->getMessage());
-                }
-            }
+    //             // Sync to OPAC
+    //             try {
+    //                 $this->insertToOpac([
+    //                     'nomor_induk' => $user->nomor_induk,
+    //                     'email'       => $user->email,
+    //                     'password'    => $user->password, // Already hashed
+    //                 ]);
+    //             } catch (\Throwable $e) {
+    //                 Log::error("Gagal sync ke OPAC untuk NIM {$user->nomor_induk}: " . $e->getMessage());
+    //             }
+    //         }
 
-            return response()->json([
-                'status' => true,
-                'message' => "Berhasil sinkronisasi " . count($dataToSync) . " mahasiswa."
-            ]);
-        }
+    //         return response()->json([
+    //             'status' => true,
+    //             'message' => "Berhasil sinkronisasi " . count($dataToSync) . " mahasiswa."
+    //         ]);
+    //     }
 
-        return response()->json([
-            'status' => false,
-            'message' => 'Gagal terhubung ke API PCR (Mahasiswa): ' . $response->body()
-        ], 500);
-    }
+    //     return response()->json([
+    //         'status' => false,
+    //         'message' => 'Gagal terhubung ke API PCR (Mahasiswa): ' . $response->body()
+    //     ], 500);
+    // }
 
-    public function syncAPIPegawai(): JsonResponse
-    {
-        // 1. Tembak API
-        $response = Http::withHeaders([
-            'apikey' => config('services.pcr.key'),
-            'Accept' => 'application/json'
+    // public function syncAPIPegawai(): JsonResponse
+    // {
+    //     // 1. Tembak API
+    //     $response = Http::withHeaders([
+    //         'apikey' => config('services.pcr.key'),
+    //         'Accept' => 'application/json'
 
-        ])->withQueryParameters([
-            // Ini sesuai tab Params di image pertama
-            'collection' => 'pegawai-aktif'
-        ])
-            ->post('https://v2.api.pcr.ac.id/api/pegawai', [
-                'collection' => 'pegawai-aktif',
-                'pagesize' => 500
-            ]);
+    //     ])->withQueryParameters([
+    //         // Ini sesuai tab Params di image pertama
+    //         'collection' => 'pegawai-aktif'
+    //     ])
+    //         ->post('https://v2.api.pcr.ac.id/api/pegawai', [
+    //             'collection' => 'pegawai-aktif',
+    //             'pagesize' => 500
+    //         ]);
 
-        if ($response->successful()) {
-            $pegawaiList = $response->json('items') ?? $response->json('data') ?? [];
+    //     if ($response->successful()) {
+    //         $pegawaiList = $response->json('items') ?? $response->json('data') ?? [];
 
-            if (empty($pegawaiList)) {
-                return response()->json(['status' => false, 'message' => 'Tidak ada data ditemukan. Response: ' . $response->body()], 404);
-            }
+    //         if (empty($pegawaiList)) {
+    //             return response()->json(['status' => false, 'message' => 'Tidak ada data ditemukan. Response: ' . $response->body()], 404);
+    //         }
 
-            $dataToSync = [];
-            $allNips    = [];
-            // Optimization: Calculate password hash once
-            $defaultPassword = Hash::make('pcr123');
+    //         $dataToSync = [];
+    //         $allNips    = [];
+    //         // Optimization: Calculate password hash once
+    //         $defaultPassword = Hash::make('pcr123');
 
-            foreach ($pegawaiList as $pegawai) {
-                if (isset($pegawai['posisi']) && strtolower($pegawai['posisi']) === 'dosen') {
-                    $nip = $pegawai['nip'];
-                    $allNips[] = $nip;
-                    $user = User::where('nomor_induk', $nip)->first();
-                    if ($user) {
-                        $user->assignRole('member');
-                    }
+    //         foreach ($pegawaiList as $pegawai) {
+    //             if (isset($pegawai['posisi']) && strtolower($pegawai['posisi']) === 'dosen') {
+    //                 $nip = $pegawai['nip'];
+    //                 $allNips[] = $nip;
+    //                 $user = User::where('nomor_induk', $nip)->first();
+    //                 if ($user) {
+    //                     $user->assignRole('member');
+    //                 }
 
-                    $dataToSync[] = [
-                        'nomor_induk' => $nip,
-                        'name'        => $pegawai['nama'],
-                        'inisial'     => $pegawai['inisial'],
-                        'email'       => $pegawai['email'],
-                        'posisi'      => $pegawai['posisi'], // Dinamis berdasarkan data API
-                        'password'    => $defaultPassword,
-                        'created_at'  => now(),
-                        'updated_at'  => now(),
-                    ];
-                }
-            }
+    //                 $dataToSync[] = [
+    //                     'nomor_induk' => $nip,
+    //                     'name'        => $pegawai['nama'],
+    //                     'inisial'     => $pegawai['inisial'],
+    //                     'email'       => $pegawai['email'],
+    //                     'posisi'      => $pegawai['posisi'], // Dinamis berdasarkan data API
+    //                     'password'    => $defaultPassword,
+    //                     'created_at'  => now(),
+    //                     'updated_at'  => now(),
+    //                 ];
+    //             }
+    //         }
 
-            if (empty($dataToSync)) {
-                return response()->json(['status' => false, 'message' => 'Tidak ada data dosen ditemukan. Response: ' . $response->body()], 404);
-            }
+    //         if (empty($dataToSync)) {
+    //             return response()->json(['status' => false, 'message' => 'Tidak ada data dosen ditemukan. Response: ' . $response->body()], 404);
+    //         }
 
-            // Upsert User
-            User::upsert($dataToSync, ['nomor_induk'], ['name', 'email', 'inisial', 'posisi', 'updated_at']);
+    //         // Upsert User
+    //         User::upsert($dataToSync, ['nomor_induk'], ['name', 'email', 'inisial', 'posisi', 'updated_at']);
 
-            // 4. Assign Roles & Sync to OPAC
-            // Optimization: Fetch only affected users in one query
-            $users = User::whereIn('nomor_induk', $allNips)->get();
+    //         // 4. Assign Roles & Sync to OPAC
+    //         // Optimization: Fetch only affected users in one query
+    //         $users = User::whereIn('nomor_induk', $allNips)->get();
 
-            foreach ($users as $user) {
-                // Sync to OPAC
-                try {
-                    $this->insertToOpac([
-                        'nomor_induk' => $user->nomor_induk,
-                        'email'       => $user->email,
-                        'password'    => $user->password,
-                    ]);
-                } catch (\Throwable $e) {
-                    Log::error("Gagal sync ke OPAC untuk NIP {$user->nomor_induk}: " . $e->getMessage());
-                }
-            }
+    //         foreach ($users as $user) {
+    //             // Sync to OPAC
+    //             try {
+    //                 $this->insertToOpac([
+    //                     'nomor_induk' => $user->nomor_induk,
+    //                     'email'       => $user->email,
+    //                     'password'    => $user->password,
+    //                 ]);
+    //             } catch (\Throwable $e) {
+    //                 Log::error("Gagal sync ke OPAC untuk NIP {$user->nomor_induk}: " . $e->getMessage());
+    //             }
+    //         }
 
-            return response()->json([
-                'status' => true,
-                'message' => "Berhasil sinkronisasi " . count($dataToSync) . " pegawai."
-            ]);
-        }
+    //         return response()->json([
+    //             'status' => true,
+    //             'message' => "Berhasil sinkronisasi " . count($dataToSync) . " pegawai."
+    //         ]);
+    //     }
 
-        return response()->json([
-            'status' => false,
-            'message' => 'Gagal terhubung ke API PCR (Pegawai): ' . $response->body()
-        ], 500);
-    }
+    //     return response()->json([
+    //         'status' => false,
+    //         'message' => 'Gagal terhubung ke API PCR (Pegawai): ' . $response->body()
+    //     ], 500);
+    // }
 
     function store(Request $req): JsonResponse
     {
@@ -286,13 +286,13 @@ class UserController extends Controller
                 $inserted->assignRole($req->role);
 
                 // Create Member in OPAC if nomor_induk is present
-                if (!empty($req->nomor_induk)) {
-                    try {
-                        $this->insertToOpac($userData);
-                    } catch (\Throwable $e) {
-                        Log::error('Gagal memasukkan member ke OPAC: ' . $e->getMessage(), ['user_id' => $inserted->id]);
-                    }
-                }
+                // if (!empty($req->nomor_induk)) {
+                //     try {
+                //         $this->insertToOpac($userData);
+                //     } catch (\Throwable $e) {
+                //         Log::error('Gagal memasukkan member ke OPAC: ' . $e->getMessage(), ['user_id' => $inserted->id]);
+                //     }
+                // }
 
                 DB::commit();
 
@@ -313,36 +313,36 @@ class UserController extends Controller
         }
     }
 
-    function insertToOpac($userData)
-    {
-        $existingMember = Member::where('member_id', $userData['nomor_induk'])->first();
-        if (!$existingMember) {
-            Member::create([
-                'member_id' => $userData['nomor_induk'],
-                'member_email' => $userData['email'],
-                'member_name' => $userData['email'], // Default name same as email initially
-                'gender' => 0,
-                'birth_date' => null,
-                'member_type_id' => 1,
-                'member_mail_address' => null,
-                'mpasswd' => $userData['password'],
-                'postal_code' => null,
-                'inst_name' => null,
-                'is_new' => 1,
-                'member_image' => null,
-                'pin' => null,
-                'member_phone' => null,
-                'member_fax' => null,
-                'member_since_date' => now()->toDateString(),
-                'register_date' => now()->toDateString(),
-                'expire_date' => now()->addYear()->toDateString(),
-                'member_notes' => null,
-                'is_pending' => 0,
-                'input_date' => now()->toDateString(),
-                'last_update' => now()->toDateString()
-            ]);
-        }
-    }
+    // function insertToOpac($userData)
+    // {
+    //     $existingMember = Member::where('member_id', $userData['nomor_induk'])->first();
+    //     if (!$existingMember) {
+    //         Member::create([
+    //             'member_id' => $userData['nomor_induk'],
+    //             'member_email' => $userData['email'],
+    //             'member_name' => $userData['email'], // Default name same as email initially
+    //             'gender' => 0,
+    //             'birth_date' => null,
+    //             'member_type_id' => 1,
+    //             'member_mail_address' => null,
+    //             'mpasswd' => $userData['password'],
+    //             'postal_code' => null,
+    //             'inst_name' => null,
+    //             'is_new' => 1,
+    //             'member_image' => null,
+    //             'pin' => null,
+    //             'member_phone' => null,
+    //             'member_fax' => null,
+    //             'member_since_date' => now()->toDateString(),
+    //             'register_date' => now()->toDateString(),
+    //             'expire_date' => now()->addYear()->toDateString(),
+    //             'member_notes' => null,
+    //             'is_pending' => 0,
+    //             'input_date' => now()->toDateString(),
+    //             'last_update' => now()->toDateString()
+    //         ]);
+    //     }
+    // }
 
 
 
@@ -431,12 +431,12 @@ class UserController extends Controller
         // Debug info
         Log::info('initiateUserToken called', [
             'user_id' => $user->id,
-            'user_name' => $user->name,
-            'nomor_induk' => $user->nomor_induk
+            'user_name' => $user->member_name,
+            'member_id' => $user->member_id
         ]);
 
-        // Pastikan user punya nomor_induk
-        if (empty($user->nomor_induk)) {
+        // Pastikan user punya member_id
+        if (empty($user->member_id)) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Nomor induk user belum diatur. Hubungi administrator.'
@@ -456,8 +456,8 @@ class UserController extends Controller
 
         Cache::put($cacheKey, [
             'user_id'   => $user->id,
-            'name'      => $user->name,
-            'nomor_induk' => $user->nomor_induk
+            'member_name'      => $user->member_name,
+            'member_id' => $user->member_id
         ], now()->addMinutes(10));
 
         $verifyToken = cache()->get($cacheKey);
@@ -492,14 +492,13 @@ class UserController extends Controller
         }
 
         $user = Auth::user();
-        $member = Biblio::getMemberId($user->nomor_induk);
+        $member = Biblio::getMemberId($user->member_id);
         
 
         Cache::put('kios_'.$sessionId, [
             'status' => 'scanned',
-            'user_id' => $user->id,
-            'name' => $member->member_name ?? $user->name,
-            'nomor_induk' => $member->member_id ?? $user->nomor_induk
+            'member_name' => $user->member_name,
+            'member_id' => $user->member_id
         ], now()->addMinutes(10));
 
         // Berikan respons OK ke HP Mahasiswa
@@ -510,10 +509,10 @@ class UserController extends Controller
     {
         $user = Auth::user();
 
-        $data = User::getLatestItemLoanedByUser($user->nomor_induk);
+        $data = User::getLatestItemLoanedByUser($user->member_id);
 
-        $activeLoans = Loan::activeLoanCount($user->nomor_induk);
-        $overdueLoans = Loan::where('member_id', $user->nomor_induk)
+        $activeLoans = Loan::activeLoanCount($user->member_id);
+        $overdueLoans = Loan::where('member_id', $user->member_id)
             ->overdue()
             ->count();
 

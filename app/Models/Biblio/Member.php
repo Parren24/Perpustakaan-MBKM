@@ -74,6 +74,20 @@ class Member extends Authenticatable
         'last_login_ip'
     ];
 
+    public function getAuthPassword()
+    {
+        return $this->attributes['mpasswd'];
+    }
+
+    public function getAuthPasswordName()
+    {
+        return 'mpasswd';
+    }
+    public function routeNotificationForMail($notification = null)
+    {
+        return $this->member_email;
+    }
+
     /**
      * Relasi dengan Member Type (Many to One)
      */

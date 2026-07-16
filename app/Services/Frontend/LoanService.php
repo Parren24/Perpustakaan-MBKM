@@ -51,7 +51,7 @@ class LoanService
             checkMemberNomorIndukValid($memberData);
 
             // Ambil cart dan validasi
-            $cart = CartLoan::getMemberIdInCart($memberData['user_id']);
+            $cart = CartLoan::getMemberIdInCart($memberData['member_id']);
 
             if (!$cart || empty($cart->list_item)) {
                 return errResponse(400, 'Keranjang peminjaman kosong.');
@@ -88,8 +88,8 @@ class LoanService
             }
 
             // Cek kembali batas maksimal peminjaman aktif
-            $activeLoanCount = Loan::activeLoanCount($memberData['nomor_induk']);
-            $loanRules = self::loanRules($memberData['nomor_induk']);
+            $activeLoanCount = Loan::activeLoanCount($memberData['member_id']);
+            $loanRules = self::loanRules($memberData['member_id']);
             $loanLimit = $loanRules[0];
             $loanPeriod = $loanRules[1];
             $loanDueDate = Carbon::now()->addDays($loanPeriod)->format('Y-m-d'); // Hitung due date berdasarkan loan periode
@@ -106,7 +106,7 @@ class LoanService
             // Hitung peminjaman aktif "biasa" yang belum dikembalikan (Abaikan modul)
             $activeNormalLoanCount = Loan::join('item', 'loan.item_code', '=', 'item.item_code')
                 ->join('mst_coll_type', 'item.coll_type_id', '=', 'mst_coll_type.coll_type_id')
-                ->where('loan.member_id', $memberData['nomor_induk'])
+                ->where('loan.member_id', $memberData['member_id'])
                 ->where('loan.is_return', 0)
                 ->where('mst_coll_type.is_limit_true', 1)
                 ->count();
@@ -154,7 +154,7 @@ class LoanService
                 }
 
                 // Insert ke table loan menggunakan due date masing-masing item
-                $loanId = Loan::InsertDataTableLoan($cartItem['item_code'], $memberData['nomor_induk'], $itemDueDate);
+                $loanId = Loan::InsertDataTableLoan($cartItem['item_code'], $memberData['member_id'], $itemDueDate);
 
                 $loanIds[] = $loanId;
                 $processedItems[] = [
@@ -193,7 +193,7 @@ class LoanService
             DB::rollBack();
 
             Log::error('Error in storeLoanTransaction: ' . $e->getMessage(), [
-                'member_id' => isset($memberData['user_id']) ? $memberData['user_id'] : 'Unknown',
+                'member_id' => isset($memberData['member_id']) ? $memberData['member_id'] : 'Unknown',
                 'trace' => $e->getTraceAsString()
             ]);
 
@@ -210,7 +210,7 @@ class LoanService
         try {
             // Ambil data loan
             $loan = Loan::where('loan_id', $loanId)
-                ->where('member_id', $memberData['nomor_induk'])
+                ->where('member_id', $memberData['member_id'])
                 ->where('is_return', 0)
                 ->first();
 
@@ -224,19 +224,19 @@ class LoanService
             if (Carbon::now()->gt(Carbon::parse($loan->due_date))) {
 
                 // Hitung denda
-                $penaltyAmount = self::calculatePenaltyForLoan($loan, $memberData['nomor_induk']);
+                $penaltyAmount = self::calculatePenaltyForLoan($loan, $memberData['member_id']);
                 $countOverdue = Carbon::parse($loan->due_date)->diffInDays(Carbon::now());
 
                 // Cek apakah denda sudah tercatat
                 if ($penaltyAmount > 0) {
                     // Cek apakah denda sudah tercatat
                     $existingPenalty = Fine::where('loan_id', $loanId)
-                        ->where('member_id', $memberData['nomor_induk'])
+                        ->where('member_id', $memberData['member_id'])
                         ->first();
 
                     if (!$existingPenalty) {
                         Fine::insertFine(
-                            $memberData['user_id'],
+                            $memberData['member_id'],
                             $penaltyAmount,
                             'Overdue fines for item' . $loanItemCode,
                             $loanId,
@@ -275,7 +275,7 @@ class LoanService
 
             Log::error('Error in returnLoanItem: ' . $e->getMessage(), [
                 'loan_id' => $loanId,
-                'member_id' => $memberData['user_id'] ?? null,
+                'member_id' => $memberData['member_id'] ?? null,
                 'trace' => $e->getTraceAsString()
             ]);
 
@@ -363,7 +363,7 @@ class LoanService
         $memberData = Session::get('biblio_user');
         checkMemberUserValid($memberData);
 
-        $loans = Loan::getMemberActiveLoans($memberData['nomor_induk']);
+        $loans = Loan::getMemberActiveLoans($memberData['member_id']);
 
         return successResponse([
             'loan_ids' => $loans->pluck('loan_id')->toArray(),
@@ -375,7 +375,7 @@ class LoanService
     public static function checkLoanExists($loanId, $memberData)
     {
         $loan = Loan::where('loan_id', $loanId)
-            ->where('member_id', $memberData['nomor_induk'])
+            ->where('member_id', $memberData['member_id'])
             ->where('is_return', 0)
             ->first();
 

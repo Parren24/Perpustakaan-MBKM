@@ -143,7 +143,7 @@ class ItemService
         $user = Auth::user();
         $cacheKey = 'biblio_token_' . $request->session_token;
         $sessionData = Cache::get($cacheKey);
-        $loanRules = self::loanRules($user->nomor_induk);
+        $loanRules = self::loanRules($user->member_id);
         $loanLimit = $loanRules[0];
 
         if (!$sessionData) {
@@ -160,10 +160,10 @@ class ItemService
             ], 401);
         }
 
-        if (!$user->nomor_induk) {
+        if (!$user->member_id) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Nomor induk tidak ditemukan. Silakan lengkapi profil Anda.'
+                'message' => 'Member ID tidak ditemukan. Silakan lengkapi profil Anda.'
             ], 400);
         }
 
@@ -203,7 +203,7 @@ class ItemService
         // Cek apakah user sudah meminjam item yang sama
         $existingLoan = DB::connection('mysql_opac')
             ->table('loan')
-            ->where('member_id', $user->nomor_induk)
+            ->where('member_id', $user->member_id)
             ->where('item_code', $item->item_code)
             ->where('is_return', 0)
             ->exists();
@@ -225,7 +225,7 @@ class ItemService
             // Insert record ke table loan
             $loanId = DB::connection('mysql_opac')->table('loan')->insertGetId([
                 'item_code'   => $item->item_code,
-                'member_id'   => $user->nomor_induk,
+                'member_id'   => $user->member_id,
                 'loan_date'   => Carbon::now(),
                 'due_date'    => Carbon::now()->addDays(7),
                 'renewed'     => 0,
@@ -239,8 +239,8 @@ class ItemService
 
             // Log activity
             Log::info('Item borrowed successfully', [
-                'user_id' => $user->id,
-                'member_id' => $user->nomor_induk,
+
+                'member_id' => $user->member_id,
                 'item_code' => $item->item_code,
                 'loan_id' => $loanId
             ]);
@@ -265,7 +265,7 @@ class ItemService
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error during borrowing item: ' . $e->getMessage(), [
-                'user_id' => $user->id,
+                'member_id' => $user->member_id,
                 'item_code' => $request->item_code,
                 'trace' => $e->getTraceAsString()
             ]);
@@ -294,9 +294,8 @@ class ItemService
         // Simpan data sesi di cache selama 10 menit
         $cacheKey = 'user_token_' . $token;
         Cache::put($cacheKey, [
-            'user_id'   => $user->id,
-            'name'      => $user->name,
-            'nomor_induk' => $user->nomor_induk
+            'member_id'   => $user->member_id,
+            'name'      => $user->member_name
         ], now()->addMinutes(10));
 
         $verifyToken = cache()->get($cacheKey);
@@ -326,13 +325,13 @@ class ItemService
     {
         $user = Auth::user();
 
-        if (!$user || !$user->nomor_induk) {
+        if (!$user || !$user->member_id) {
             return 0;
         }
 
         return DB::connection('mysql_opac')
             ->table('loan')
-            ->where('member_id', $user->nomor_induk)
+            ->where('member_id', $user->member_id)
             ->where('is_return', 0)
             ->count();
     }
@@ -346,7 +345,7 @@ class ItemService
     {
         $user = Auth::user();
 
-        if (!$user || !$user->nomor_induk) {
+        if (!$user || !$user->member_id) {
             return collect();
         }
 
@@ -364,7 +363,7 @@ class ItemService
             ])
             ->leftJoin('item', 'loan.item_code', '=', 'item.item_code')
             ->leftJoin('biblio', 'item.biblio_id', '=', 'biblio.biblio_id')
-            ->where('loan.member_id', $user->nomor_induk)
+            ->where('loan.member_id', $user->member_id)
             ->where('loan.is_return', 0)
             ->orderBy('loan.loan_date', 'desc')
             ->get();
@@ -377,7 +376,7 @@ class ItemService
      */
     public static function canBorrow(): bool
     {
-        $loanRules = self::loanRules(Auth::user()->nomor_induk);
+        $loanRules = self::loanRules(Auth::user()->member_id);
         $loanLimit = $loanRules[0];
 
         return self::getActiveLoanCount() < $loanLimit;
@@ -390,7 +389,7 @@ class ItemService
      */
     public static function getLoanInfo(): array
     {
-        $loanRules = self::loanRules(Auth::user()->nomor_induk);
+        $loanRules = self::loanRules(Auth::user()->member_id);
         $loanLimit = $loanRules[0];
 
         $activeLoanCount = self::getActiveLoanCount();

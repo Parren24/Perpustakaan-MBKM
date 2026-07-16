@@ -4,6 +4,8 @@ use App\Models\Karirhub\Pencaker\Pencaker;
 use App\Models\Karirhub\Perusahaan\Perusahaan;
 use App\Models\User;
 use App\Models\Master\Kelas;
+use Illuminate\Support\Facades\Session;
+use App\Models\Biblio\Member;
 use Illuminate\Support\Facades\Auth;
 
 function userRoles()
@@ -27,8 +29,14 @@ function userType()
 }
 
 function userInisial()
-{
-    return Auth::user() ? Auth::user()->username : NULL;
+{   
+    # PERUBAHAN HELPER USER INISIAL
+    if (Auth::user()) {
+        return Auth::user()->username ?? Auth::user()->member_id ?? null;
+    }
+
+    $memberData = Session::get('biblio_user');
+    return $memberData['member_id'] ?? null;
 }
 
 function userAvatar()
@@ -39,8 +47,18 @@ function userAvatar()
 }
 
 function causerActivityLog()
-{
-    return Auth::user();
+{   
+    # PERUBAHAN HELPER ACTIVITY LOG
+    if (Auth::user()) {
+        return Auth::user();
+    }
+
+    $memberData = Session::get('biblio_user');
+    if (!empty($memberData['member_id'])) {
+        return Member::find($memberData['member_id']);
+    }
+
+    return null;
 }
 
 /**

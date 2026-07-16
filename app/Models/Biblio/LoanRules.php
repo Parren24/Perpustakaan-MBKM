@@ -90,7 +90,7 @@ class LoanRules extends Model
         $loanRules =DB::connection('mysql_opac')
             ->table('mst_loan_rules')
             ->where('member_type_id', $member->member_type_id)
-            ->select('loan_periode', 'loan_limit', 'reborrow_limit', 'fine_each_day')
+            ->select('loan_periode','coll_type_id' ,'loan_limit', 'reborrow_limit', 'fine_each_day')
             ->first();
 
 

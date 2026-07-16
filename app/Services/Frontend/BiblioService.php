@@ -289,9 +289,9 @@ class BiblioService
             // }
 
             // Validasi member di database OPAC
-            Log::info('authorizeSession: Looking for member', ['nomor_induk' => $sessionData['nomor_induk']]);
+            Log::info('authorizeSession: Looking for member', ['member_id' => $sessionData['member_id'] ?? 'N/A', 'nomor_induk' => $sessionData['nomor_induk'] ?? 'N/A']);
 
-            $member = Biblio::getMemberId($sessionData['nomor_induk']);
+            $member = Biblio::getMemberId($sessionData['member_id']);
 
             if (!$member) {
                 return errResponse(404, 'Member tidak ditemukan atau tidak aktif.');
@@ -299,7 +299,7 @@ class BiblioService
 
             // Cek status peminjaman member
             try {
-                $loanInfo = self::getMemberLoanInfo($sessionData['nomor_induk']);
+                $loanInfo = self::getMemberLoanInfo($sessionData['member_id']);
             } catch (\Exception $e) {
                 return errResponse(500, 'Gagal mengambil informasi peminjaman member: ' . $e->getMessage());
             }
@@ -317,10 +317,8 @@ class BiblioService
             // Set session untuk biblio user
             try {
                 Session::put('biblio_user', [
-                    'user_id' => $sessionData['user_id'],
-                    'name' => $sessionData['name'],
-                    'nomor_induk' => $sessionData['nomor_induk'],
-                    'member_name' => $member->member_name ?? $sessionData['name'],
+                    'member_id' => $sessionData['member_id'],
+                    'member_name' => $member->member_name ?? $sessionData['member_name'],
                     'authorized_at' => now()->toISOString(),
                     'session_expires_at' => now()->addMinutes(10)->toISOString()
                 ]);
@@ -344,8 +342,8 @@ class BiblioService
 
             try {
                 $responseData = [
-                    'member_name' => $member->member_name ?? $sessionData['name'],
-                    'nomor_induk' => $sessionData['nomor_induk'],
+                    'member_name' => $member->member_name ?? $sessionData['member_name'],
+                    'member_id' => $member->member_id ?? $sessionData['member_id'],
                     'loan_info' => $loanInfo,
                     'session_expires_at' => now()->addMinutes(30)->toISOString()
                 ];

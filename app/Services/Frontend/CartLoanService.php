@@ -40,7 +40,7 @@ class CartLoanService{
 
             checkMemberUserValid($memberData);
 
-            $cart = CartLoan::getMemberIdInCart($memberData['user_id']);
+            $cart = CartLoan::getMemberIdInCart($memberData['member_id']);
             if ($cart) {
                 $cart->delete();
             }
@@ -62,7 +62,7 @@ class CartLoanService{
                 return errResponse(400, 'Kode item tidak boleh kosong.');
             }
 
-            $cart = CartLoan::getMemberIdInCart($memberData['user_id']);
+            $cart = CartLoan::getMemberIdInCart($memberData['member_id']);
             if (!$cart) {
                 return errResponse(404, 'Keranjang tidak ditemukan.');
             }
@@ -76,7 +76,7 @@ class CartLoanService{
             $cart->list_item = array_values($filteredItems);
             $cart->save();
 
-            $loanRules = self::loanRules($memberData['nomor_induk']);
+            $loanRules = self::loanRules($memberData['member_id']);
             $loanLimit = $loanRules[0]; 
 
             return successResponse([
@@ -96,7 +96,7 @@ class CartLoanService{
             $memberData = Session::get('biblio_user');
             checkMemberUserValid($memberData);
 
-            $cart = CartLoan::getMemberIdInCart($memberData['user_id']);
+            $cart = CartLoan::getMemberIdInCart($memberData['member_id']);
             $rawItems = $cart ? ($cart->list_item ?? []) : [];
 
             // Hanya ambil buku reguler (Abaikan Modul / coll_type_id == 13)
@@ -107,12 +107,12 @@ class CartLoanService{
             $items = array_values($filteredItems);
 
             // Dapatkan limit dari rules
-            $loanRules = self::loanRules($memberData['nomor_induk']);
+            $loanRules = self::loanRules($memberData['member_id']);
             $loanLimit = $loanRules[0];
 
             // HITUNG BUKU REGULER YANG SEDANG DIPINJAM & BELUM DIKEMBALIKAN
             $activeNormalLoanCount = Loan::join('item', 'loan.item_code', '=', 'item.item_code')
-                ->where('loan.member_id', $memberData['nomor_induk'])
+                ->where('loan.member_id', $memberData['member_id'])
                 ->where('loan.is_return', 0)
                 ->where('item.coll_type_id', '!=', 13)
                 ->count();
@@ -143,7 +143,7 @@ class CartLoanService{
             $memberData = Session::get('biblio_user');
             checkMemberUserValid($memberData);
 
-            $cart = CartLoan::getMemberIdInCart($memberData['user_id']);
+            $cart = CartLoan::getMemberIdInCart($memberData['member_id']);
             $rawItems = $cart ? ($cart->list_item ?? []) : [];
 
             $filteredItems = array_filter($rawItems, function($item) {
@@ -172,7 +172,7 @@ class CartLoanService{
             // Validasi session harus punya nomor_induk (sudah ter-authorize)
             checkMemberNomorIndukValid($memberData);
 
-            $loanRules = self::loanRules($memberData['nomor_induk']);
+            $loanRules = self::loanRules($memberData['member_id']);
             $loanLimit = $loanRules[0];
 
             $itemCode = $request->input('item_code');
@@ -205,7 +205,7 @@ class CartLoanService{
 
             // Cari atau buat cart untuk member
             $cart = CartLoan::firstOrCreate(
-                ['member_id' => $memberData['user_id']],
+                ['member_id' => $memberData['member_id']],
                 ['list_item' => []]
             );
 
@@ -225,7 +225,7 @@ class CartLoanService{
 
             // 2. Hitung buku reguler yang sedang dipinjam (aktif)
             $activeNormalLoanCount = Loan::join('item', 'loan.item_code', '=', 'item.item_code')
-                ->where('loan.member_id', $memberData['nomor_induk'])
+                ->where('loan.member_id', $memberData['member_id'])
                 ->where('loan.is_return', 0)
                 ->where('item.coll_type_id', '!=', 13)
                 ->count();
@@ -243,7 +243,7 @@ class CartLoanService{
             }
 
             // Cek apakah user sudah meminjam item yang sama dan belum dikembalikan
-            $existingLoan = Loan::existingLoan($itemCode, $memberData['nomor_induk']);
+            $existingLoan = Loan::existingLoan($itemCode, $memberData['member_id']);
 
             if ($existingLoan) {
                 return errResponse(400, 'Anda sudah meminjam buku ini sebelumnya dan belum mengembalikannya.');
@@ -263,6 +263,7 @@ class CartLoanService{
             $currentItems[] = $newItem;
             $cart->list_item = $currentItems;
             $cart->save();
+
 
             return successResponse([
                 'cart_items' => $currentItems,
@@ -319,7 +320,7 @@ class CartLoanService{
             } 
 
             $cart = CartLoan::firstOrCreate(
-                ['member_id' => $memberData['user_id']],
+                ['member_id' => $memberData['member_id']],
                 ['list_item' => []]
             );
 
@@ -332,7 +333,7 @@ class CartLoanService{
             }
 
             // Cek apakah user sudah meminjam item yang sama dan belum dikembalikan
-            $existingLoan = Loan::existingLoan($itemCode, $memberData['nomor_induk']);
+            $existingLoan = Loan::existingLoan($itemCode, $memberData['member_id']);
 
             if ($existingLoan) {
                 return errResponse(400, 'Anda sudah meminjam buku ini sebelumnya dan belum mengembalikannya.');
