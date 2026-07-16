@@ -14,7 +14,7 @@ use Carbon\Carbon;
 class User extends Authenticatable
 {
     use HasFactory, Notifiable, HasRoles;
-
+    protected $connection = 'mysql_opac';
     /**
      * The "booted" method of the model.
      */

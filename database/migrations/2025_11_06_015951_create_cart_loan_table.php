@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('cart_loan', function (Blueprint $table) {
+        Schema::connection('mysql_opac')->create('cart_loan', function (Blueprint $table) {
             $table->id('loan_id'); // Primary Key
             $table->integer('member_id');
             $table->dateTime('tanggal');
@@ -25,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('cart_loan');
+        Schema::connection('mysql_opac')->dropIfExists('cart_loan');
     }
 };

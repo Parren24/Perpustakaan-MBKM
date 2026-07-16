@@ -3,13 +3,16 @@
 namespace App\Models\Biblio;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Permission\Traits\HasRoles;
+use Illuminate\Notifications\Notifiable;
 use Carbon\Carbon;
 
-class Member extends Model
+class Member extends Authenticatable 
 {
-    use HasFactory;
-    
+    use HasFactory, Notifiable, HasRoles;
+
     protected $connection = 'mysql_opac';
     protected $table = 'member';
     protected $primaryKey = 'member_id';

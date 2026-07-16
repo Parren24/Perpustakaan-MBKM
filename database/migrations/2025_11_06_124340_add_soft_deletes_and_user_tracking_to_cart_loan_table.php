@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('cart_loan', function (Blueprint $table) {
+        Schema::connection('mysql_opac')->table('cart_loan', function (Blueprint $table) {
             // Add soft deletes
             $table->softDeletes();
             
@@ -30,7 +30,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('cart_loan', function (Blueprint $table) {
+        Schema::connection('mysql_opac')->table('cart_loan', function (Blueprint $table) {
             // Remove soft deletes
             $table->dropSoftDeletes();
             
