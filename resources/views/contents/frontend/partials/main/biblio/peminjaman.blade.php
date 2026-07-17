@@ -11,8 +11,8 @@
                         <div class="p-4 align-items-center ">
                             <H3 class="text-center">Aturan Peminjaman buku</H3>
                             <div class="p-5">
-                                <li>Setiap anggota perpustakaan dapat meminjam maksimal 2 (dua) buku dalam satu kali peminjaman.</li>
-                                <li>Apabila buku yang dipinjam tidak dikembalikan tepat waktu, akan dikenakan denda sebesar Rp 2.000,- (dua ribu rupiah) per hari keterlambatan.</li>
+                                <li>Setiap buku yang dipinjam adalah milik perpustakaan dan wajib dikembalikan dalam waktu yang ditentukan.</li>
+                                <li>Apabila buku yang dipinjam tidak dikembalikan tepat waktu, akan dikenakan denda sebesar yang ditentukan per hari keterlambatan.</li>
                                 <li>Anggota perpustakaan wajib menjaga kondisi buku yang dipinjam agar tetap baik dan tidak rusak.</li>
                                 <li>Jika buku yang dipinjam hilang atau rusak parah, anggota wajib mengganti dengan buku yang sama atau membayar sesuai harga buku tersebut.</li>
                             </div>

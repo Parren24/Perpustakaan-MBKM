@@ -36,6 +36,13 @@ class LoanService
         return [$loanLimit, $loanPeriode, $reborrowLimit, $fineEachDay];
     }
 
+    public static function getActiveRule($memberId, $collTypeId)
+    {
+        $rule = LoanRules::getActiveRule($memberId, $collTypeId);
+
+        return $rule;
+    }
+
     public static function storeLoanTransaction($request)
     {
         DB::beginTransaction();
@@ -68,7 +75,7 @@ class LoanService
             // $modulItems = [];
             foreach ($cartItems as $cartItem) {
                 $item = Item::where('item_code', $cartItem['item_code'])->first();
-                if (!$item || !$item->is_available) {
+                if (!$item || !$item->is_available || $item->item_status_id != '0') {
                     $unavailableItems[] = $cartItem['item_code'];
                 }
 
@@ -121,39 +128,24 @@ class LoanService
             $processedItems = [];
             $printReceipts = [];
 
-            //Notes :: Tambah parameter untuk due date 
-
-            // Proses setiap item dalam cart
             foreach ($cartItems as $cartItem) {
-                $item = Item::where('item_code', $cartItem['item_code'])
-                    ->lockForUpdate()
-                    ->first();
+                $item = Item::where('item_code', $cartItem['item_code'])->lockForUpdate()->first();
 
-                $itemBook = Item::with('biblio.authors')->where('item_code', $cartItem['item_code'])->first();
-
-                // Validasi status
-                if (!$item || $item->item_status_id != '0') {
+                // Ambil Rule untuk item ini
+                $rule = self::getActiveRule($memberData['member_id'], $item->coll_type_id);
+                if (!$rule) {
                     DB::rollBack();
-                    return errResponse(400, "Buku {$cartItem['item_code']} sudah tidak tersedia.");
+                    return errResponse(400, "Aturan peminjaman untuk item {$cartItem['item_code']} belum dikonfigurasi.");
                 }
 
-                $item = Item::where('item_code', $cartItem['item_code'])
-                ->join('mst_coll_type', 'item.coll_type_id', '=', 'mst_coll_type.coll_type_id')
-                ->select('item.*', 'mst_coll_type.is_limit_true')
-                ->first();
+                $loanPeriod = $rule->loan_periode ?? 14; // Fallback jika null
+                $itemDueDate = Carbon::now()->addDays($loanPeriod)->format('Y-m-d');
+
+                // Update Status Item
                 $item->item_status_id = '1';
                 $item->save();
 
-                // PENENTUAN DUE DATE SPESIAL
-                if ($item->is_limit_true == 0) {
-                    // Jika Modul: Jatuh tempo 5 Bulan
-                    $itemDueDate = Carbon::now()->addMonths(5)->format('Y-m-d');
-                } else {
-                    // Jika Buku Biasa: Sesuai rule standar (14 hari)
-                    $itemDueDate = Carbon::now()->addDays($loanPeriod)->format('Y-m-d');
-                }
-
-                // Insert ke table loan menggunakan due date masing-masing item
+                // Insert Loan
                 $loanId = Loan::InsertDataTableLoan($cartItem['item_code'], $memberData['member_id'], $itemDueDate);
 
                 $loanIds[] = $loanId;
@@ -161,22 +153,11 @@ class LoanService
                     'loan_id' => $loanId,
                     'item_code' => $cartItem['item_code'],
                     'title' => $cartItem['title'] ?? 'N/A',
-                    'due_date' => $itemDueDate, // Due date spesifik per item
-                    // 'is_modul' => ($item->coll_type_id == 13)
+                    'due_date' => $itemDueDate,
                 ];
-                // $printReceipts[] = [
-                //     // 'member_id' => $memberData['nomor_induk'],
-                //     // 'name' => $memberData['nama'],
-                //     // 'nama_biblio' => $itemBook->biblio->title ?? 'N/A',
-                //     'item_code' => $cartItem['item_code'],
-                //     'title' => $cartItem['title'] ?? ($itemBook->biblio->title ?? 'Buku'),
-                //     'due_date' => $itemDueDate,
-                // ];
             }
 
-            // Hapus cart setelah berhasil
             $cart->forceDelete();
-            // Clear session biblio user
             Session::forget('biblio_user');
 
             DB::commit();
@@ -185,18 +166,11 @@ class LoanService
                 'loan_ids' => $loanIds,
                 'borrowed_items' => $processedItems,
                 'total_borrowed' => count($processedItems),
-                // 'print_receipts' => $printReceipts,
-                // 'due_date' => $loanDueDate,
                 'return_reminder' => 'Jangan lupa mengembalikan buku tepat waktu untuk menghindari denda.'
             ], 'Transaksi peminjaman berhasil!');
         } catch (\Exception $e) {
             DB::rollBack();
-
-            Log::error('Error in storeLoanTransaction: ' . $e->getMessage(), [
-                'member_id' => isset($memberData['member_id']) ? $memberData['member_id'] : 'Unknown',
-                'trace' => $e->getTraceAsString()
-            ]);
-
+            Log::error('Error in storeLoanTransaction: ' . $e->getMessage());
             return errResponse(500, 'Terjadi kesalahan saat memproses peminjaman. Silakan coba lagi.');
         }
     }
@@ -208,7 +182,6 @@ class LoanService
         DB::beginTransaction();
 
         try {
-            // Ambil data loan
             $loan = Loan::where('loan_id', $loanId)
                 ->where('member_id', $memberData['member_id'])
                 ->where('is_return', 0)
@@ -218,18 +191,11 @@ class LoanService
                 return errResponse(404, 'Data peminjaman tidak ditemukan atau sudah dikembalikan.');
             }
 
-            $loanItemCode = $loan->item_code;
-
-            // Cek keterlambatan
             if (Carbon::now()->gt(Carbon::parse($loan->due_date))) {
-
-                // Hitung denda
                 $penaltyAmount = self::calculatePenaltyForLoan($loan, $memberData['member_id']);
                 $countOverdue = Carbon::parse($loan->due_date)->diffInDays(Carbon::now());
 
-                // Cek apakah denda sudah tercatat
                 if ($penaltyAmount > 0) {
-                    // Cek apakah denda sudah tercatat
                     $existingPenalty = Fine::where('loan_id', $loanId)
                         ->where('member_id', $memberData['member_id'])
                         ->first();
@@ -238,12 +204,11 @@ class LoanService
                         Fine::insertFine(
                             $memberData['member_id'],
                             $penaltyAmount,
-                            'Overdue fines for item' . $loanItemCode,
+                            'Overdue fines for item ' . $loan->item_code,
                             $loanId,
                             $countOverdue
                         );
                     } else {
-                        // Update denda jika sudah ada (karena hari bertambah, denda bertambah)
                         $existingPenalty->debet = $penaltyAmount;
                         $existingPenalty->count_overdue = $countOverdue;
                         $existingPenalty->fines_date = now();
@@ -251,17 +216,16 @@ class LoanService
                     }
 
                     DB::commit();
-
                     return errResponse(400, 'Buku terlambat dikembalikan. Harap bayar denda sebesar Rp ' . number_format($penaltyAmount, 0, ',', '.') . ' kepada pustakawan agar peminjaman dapat diselesaikan.');
                 }
             }
+
             $item = Item::where('item_code', $loan->item_code)->first();
             if ($item) {
-                $item->item_status_id = '0'; // Kembalikan ke Tersedia
+                $item->item_status_id = '0';
                 $item->save();
             }
 
-            // Update data loan menjadi dikembalikan jika tidak ada denda
             $loan->return_date = Carbon::now();
             $loan->is_return = 1;
             $loan->last_update = Carbon::now();
@@ -272,13 +236,7 @@ class LoanService
             return successResponse(null, 'Buku berhasil dikembalikan. Terima kasih!');
         } catch (\Exception $e) {
             DB::rollBack();
-
-            Log::error('Error in returnLoanItem: ' . $e->getMessage(), [
-                'loan_id' => $loanId,
-                'member_id' => $memberData['member_id'] ?? null,
-                'trace' => $e->getTraceAsString()
-            ]);
-
+            Log::error('Error in returnLoanItem: ' . $e->getMessage());
             return errResponse(500, 'Terjadi kesalahan saat memproses pengembalian. Silakan coba lagi.');
         }
     }
@@ -339,19 +297,19 @@ class LoanService
         $currentDate = Carbon::now()->startOfDay();
 
         if ($currentDate->greaterThan($dueDate)) {
-            // Cek apakah item ini adalah Modul (coll_type_id == 13)
-            $item = Item::where('item_code', $loan->item_code)
-            ->join('mst_coll_type', 'item.coll_type_id', '=', 'mst_coll_type.coll_type_id')
-            ->select('item.*', 'mst_coll_type.is_limit_true')
-            ->first();
-            if ($item && $item->is_limit_true == 0) {
-                return 0; // Modul tidak pernah memiliki denda
+            $item = Item::where('item_code', $loan->item_code)->first();
+            if (!$item) return 0;
+
+            $rule = self::getActiveRule($memberId, $item->coll_type_id);
+            
+            // Baca fine_each_day spesifik dari rule terkait item tersebut
+            $fineEachDay = $rule->fine_each_day ?? 0;
+
+            if ($fineEachDay <= 0) {
+                return 0; // Jika fine di set 0 di database rule (seperti modul), tidak ada denda
             }
 
-            // Hitung denda buku biasa
-            $fineEachDay = self::loanRules($memberId)[3];
             $daysOverdue = $dueDate->diffInDays($currentDate);
-
             return $daysOverdue * $fineEachDay;
         }
 

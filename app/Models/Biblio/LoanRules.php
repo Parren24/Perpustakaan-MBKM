@@ -96,4 +96,24 @@ class LoanRules extends Model
 
         return $loanRules;
     }
+
+    public static function getActiveRule($memberId, $collTypeId)
+    {
+        $member = Member::find($memberId);
+        $memberTypeId = $member ? $member->member_type_id : null;
+
+        // Cari rule spesifik untuk coll_type_id
+        $rule = LoanRules::where('member_type_id', $memberTypeId)
+                         ->where('coll_type_id', $collTypeId)
+                         ->first();
+
+        // Jika tidak ada, gunakan rule fallback (coll_type_id = 0)
+        if (!$rule) {
+            $rule = LoanRules::where('member_type_id', $memberTypeId)
+                             ->where('coll_type_id', 0)
+                             ->first();
+        }
+
+        return $rule;
+    }
 }

@@ -267,7 +267,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
                     <h3 class="fw-bolder">Halo, ${authorizedUserData.member_name}!</h3>
                     <p class="mb-3 text-muted">Sistem siap. Silakan langsung scan barcode fisik buku yang ingin dikembalikan.</p>
                     
-                    <div id="mainScannerMessage" class="mt-2 w-100" style="min-height: 40px;"></div>
+                   
                 </div>`;
         }
         mainPageCartContainer.style.display = 'block';

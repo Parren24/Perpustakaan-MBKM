@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
     let userAuthorized = false;
     let isProcessingScan = false;
     let authorizedUserData = null;
-    let pollingInterval = null; 
+    let pollingInterval = null;
     let currentSessionId = null;
     let barcodeBuffer = "";
     let barcodeTimeout = null;
@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
 
     const launchScannerBtn = document.getElementById('launchScannerBtn');
     const aturan = document.getElementById('aturan');
-    
+
     const mainPageCartContainer = document.getElementById('mainPageCartContainer');
     const mainPageUserInfo = document.getElementById('mainPageUserInfo');
     const mainPageCartList = document.getElementById('mainPageCartList');
@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
     launchScannerBtn.addEventListener('click', () => {
         scanModal.show();
     });
-    window.addEventListener('keypress', function(e) {
+    window.addEventListener('keypress', function (e) {
         // Abaikan jika user belum login, atau modal scan QR sedang terbuka, atau sistem sedang memproses buku
         if (!userAuthorized || isProcessingScan || scanModalElement.classList.contains('show')) return;
 
@@ -49,14 +49,14 @@ document.addEventListener('DOMContentLoaded', (event) => {
             e.preventDefault();
             const scannedText = barcodeBuffer.trim();
             barcodeBuffer = ""; // Reset buffer untuk scan berikutnya
-            
+
             if (scannedText === '') return;
-            
+
             isProcessingScan = true;
-            if(mainScannerMessage) {
+            if (mainScannerMessage) {
                 mainScannerMessage.innerHTML = `<div class="alert alert-info py-2 mb-0 text-center"><span class="spinner-border spinner-border-sm me-2" role="status"></span>Mencari buku...</div>`;
             }
-            
+
             getBookDetailsAndAddToCart(scannedText); // Fungsi yang sudah kamu sesuaikan sebelumnya
             return;
         }
@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
         clearTimeout(barcodeTimeout);
         barcodeTimeout = setTimeout(() => {
             barcodeBuffer = "";
-        }, 100); 
+        }, 100);
     });
 
     scanModalElement.addEventListener('shown.bs.modal', () => {
@@ -84,14 +84,14 @@ document.addEventListener('DOMContentLoaded', (event) => {
             kiosQrContainer.style.display = 'block';
             barcodeInputContainer.style.display = 'none';
             if (scanModalLabel) scanModalLabel.innerHTML = '<i class="fas fa-qrcode me-2"></i> Pindai QR Code';
-            
-            generateKiosQr(); 
+
+            generateKiosQr();
         } else {
             // MODE SCANNER FISIK BUKU
             kiosQrContainer.style.display = 'none';
             barcodeInputContainer.style.display = 'block';
             if (scanModalLabel) scanModalLabel.innerHTML = '<i class="fas fa-qrcode me-2"></i> Lakukan peminjaman';
-            
+
             scannerMessage.textContent = 'Gunakan mesin scanner fisik ke barcode buku...';
             scannerMessage.className = 'alert alert-info mb-2 text-center';
             barcodeInput.value = '';
@@ -116,15 +116,15 @@ document.addEventListener('DOMContentLoaded', (event) => {
     function generateKiosQr() {
         scannerMessage.textContent = 'Menghasilkan QR Code...';
         scannerMessage.className = 'alert alert-light mb-2 text-center';
-        
+
         fetch('/biblio/kios/generate-qr-ajax', { headers: header_data })
             .then(res => res.json())
             .then(data => {
                 if (data.status) {
                     currentSessionId = data.sessionId;
-                    qrImageWrapper.innerHTML = data.qrCode; 
+                    qrImageWrapper.innerHTML = data.qrCode;
                     scannerMessage.textContent = 'Menunggu Anda melakukan scan via HP...';
-                    
+
                     if (pollingInterval) clearInterval(pollingInterval);
                     pollingInterval = setInterval(checkKiosStatus, 2000);
                 } else {
@@ -161,79 +161,79 @@ document.addEventListener('DOMContentLoaded', (event) => {
             headers: header_data,
             body: JSON.stringify({ session_id: currentSessionId })
         })
-        .then(res => res.json())
-        .then(data => {
-            if (data.status) {
-                userAuthorized = true;
-                authorizedUserData = data.data;
-                scanModal.hide(); 
-                
-                Swal.fire({
-                    icon: 'success', title: 'Otorisasi Berhasil',
-                    text: `Halo, ${data.data.member_name}!`, timer: 1500, showConfirmButton: false
-                }).then(() => {
-                    initializeMainPageCart(); 
-                });
-            } else {
-                scannerMessage.textContent = 'Gagal mengklaim sesi transaksi.';
-                scannerMessage.className = 'alert alert-danger mb-2 text-center';
-            }
-        });
+            .then(res => res.json())
+            .then(data => {
+                if (data.status) {
+                    userAuthorized = true;
+                    authorizedUserData = data.data;
+                    scanModal.hide();
+
+                    Swal.fire({
+                        icon: 'success', title: 'Otorisasi Berhasil',
+                        text: `Halo, ${data.data.member_name}!`, timer: 1500, showConfirmButton: false
+                    }).then(() => {
+                        initializeMainPageCart();
+                    });
+                } else {
+                    scannerMessage.textContent = 'Gagal mengklaim sesi transaksi.';
+                    scannerMessage.className = 'alert alert-danger mb-2 text-center';
+                }
+            });
     }
 
     // ==========================================
     // LOGIKA SCANNER FISIK BUKU
     // ==========================================
-    barcodeInput.addEventListener('keypress', function(e) {
+    barcodeInput.addEventListener('keypress', function (e) {
         if (e.key === 'Enter') {
-            e.preventDefault(); 
+            e.preventDefault();
             const scannedText = this.value.trim();
-            this.value = ''; 
-            
+            this.value = '';
+
             if (scannedText === '' || isProcessingScan) return;
-            
+
             isProcessingScan = true;
             loadingIndicator.style.display = 'block';
             scannerMessage.textContent = 'Mencari buku...';
             scannerMessage.className = 'alert alert-light mb-2 text-center';
-            
+
             getBookDetailsAndAddToCart(scannedText);
         }
     });
 
     function getBookDetailsAndAddToCart(itemCode) {
         const msgDiv = document.getElementById('mainScannerMessage'); // Targetkan div alert yang baru
-        
+
         fetch('/cart-loan/add-to-cart', {
             method: 'POST', headers: header_data,
             body: JSON.stringify({ item_code: itemCode })
         })
-        .then(res => res.json())
-        .then(data => {
-            if (data.status) {
-                msgDiv.innerHTML = `<div class="alert alert-success py-2 mb-0 text-center"><i class="fas fa-check-circle me-2"></i>Buku berhasil ditambahkan!</div>`;
-                refreshMainPageCart(); // Update UI Keranjang
-            } else {
-                msgDiv.innerHTML = `<div class="alert alert-danger py-2 mb-0 text-center"><i class="fas fa-exclamation-circle me-2"></i>${data.message || 'Gagal menambahkan buku.'}</div>`;
-            }
-            
-            // Bersihkan pesan error/sukses setelah 2 detik dan pastikan fokus kembali ke input
-            setTimeout(() => { 
-                isProcessingScan = false; 
-                if(userAuthorized) {
-                    msgDiv.innerHTML = '';
-                    const mainBarcodeInput = document.getElementById('mainBarcodeInput');
-                    if(mainBarcodeInput) mainBarcodeInput.focus();
+            .then(res => res.json())
+            .then(data => {
+                if (data.status) {
+                    msgDiv.innerHTML = `<div class="alert alert-success py-2 mb-0 text-center"><i class="fas fa-check-circle me-2"></i>Buku berhasil ditambahkan!</div>`;
+                    refreshMainPageCart(); // Update UI Keranjang
+                } else {
+                    msgDiv.innerHTML = `<div class="alert alert-danger py-2 mb-0 text-center"><i class="fas fa-exclamation-circle me-2"></i>${data.message || 'Gagal menambahkan buku.'}</div>`;
                 }
-            }, 2500);
-        })
-        .catch(err => {
-            isProcessingScan = false;
-            if(msgDiv) {
-                msgDiv.innerHTML = `<div class="alert alert-danger py-2 mb-0 text-center">Terjadi kesalahan sistem saat menghubungi server.</div>`;
-            }
-            console.error("Error Add Cart:", err);
-        });
+
+                // Bersihkan pesan error/sukses setelah 2 detik dan pastikan fokus kembali ke input
+                setTimeout(() => {
+                    isProcessingScan = false;
+                    if (userAuthorized) {
+                        msgDiv.innerHTML = '';
+                        const mainBarcodeInput = document.getElementById('mainBarcodeInput');
+                        if (mainBarcodeInput) mainBarcodeInput.focus();
+                    }
+                }, 2500);
+            })
+            .catch(err => {
+                isProcessingScan = false;
+                if (msgDiv) {
+                    msgDiv.innerHTML = `<div class="alert alert-danger py-2 mb-0 text-center">Terjadi kesalahan sistem saat menghubungi server.</div>`;
+                }
+                console.error("Error Add Cart:", err);
+            });
     }
 
     // ==========================================
@@ -249,11 +249,11 @@ document.addEventListener('DOMContentLoaded', (event) => {
                     <div id="mainScannerMessage" class="mt-2 w-100" style="min-height: 40px;"></div>
                 </div>`;
         }
-        
+
         mainPageCartContainer.style.display = 'block';
         if (launchScannerBtn) launchScannerBtn.style.display = 'none';
         if (aturan) aturan.style.display = 'none';
-        
+
         refreshMainPageCart();
     }
 
@@ -261,22 +261,22 @@ document.addEventListener('DOMContentLoaded', (event) => {
         mainPageCartList.innerHTML = '<div class="text-center p-3"><div class="spinner-border text-primary"></div></div>';
 
         fetch('/cart-loan/cart-items', { method: 'GET', headers: header_data })
-        .then(res => res.json())
-        .then(data => {
-            if (!data.status) {
-                mainPageCartList.innerHTML = `<div class="alert alert-danger">${data.message || 'Gagal memuat keranjang'}</div>`;
-                return;
-            }
+            .then(res => res.json())
+            .then(data => {
+                if (!data.status) {
+                    mainPageCartList.innerHTML = `<div class="alert alert-danger">${data.message || 'Gagal memuat keranjang'}</div>`;
+                    return;
+                }
 
-            // Mengambil object di dalam data.data
-            const cartData = data.data; 
-            mainCheckoutBtn.disabled = cartData.total_items === 0;
-            
-            if (cartData.total_items > 0) {
-                let itemsHtml = '<ul class="list-group shadow-sm">';
-                cartData.cart_items.forEach(item => {
-                    const safeTitle = item.title ? item.title.replace(/'/g, "\\'").replace(/"/g, "&quot;") : 'Tanpa Judul';
-                    itemsHtml += `
+                // Mengambil object di dalam data.data
+                const cartData = data.data;
+                mainCheckoutBtn.disabled = cartData.total_items === 0;
+
+                if (cartData.total_items > 0) {
+                    let itemsHtml = '<ul class="list-group shadow-sm">';
+                    cartData.cart_items.forEach(item => {
+                        const safeTitle = item.title ? item.title.replace(/'/g, "\\'").replace(/"/g, "&quot;") : 'Tanpa Judul';
+                        itemsHtml += `
                         <li class="list-group-item d-flex justify-content-between align-items-center p-3">
                             <div>
                                 <h5 class="mb-1 fw-bold text-dark">${item.title}</h5>
@@ -287,25 +287,24 @@ document.addEventListener('DOMContentLoaded', (event) => {
                             </button>
                         </li>
                     `;
-                });
-                itemsHtml += '</ul>';
-                mainPageCartList.innerHTML = itemsHtml;
-                
-                mainPageCartSummary.innerHTML = `
-                    <div class="d-flex justify-content-between align-items-center mt-4 p-3 bg-light rounded">
-                        <span class="text-muted">Sisa Slot Buku: <strong>${cartData.remaining_slots}</strong></span>
-                        <h5 class="mb-0">Total: <strong>${cartData.total_items} / ${cartData.loan_limit}</strong> Buku</h5>
+                    });
+                    itemsHtml += '</ul>';
+                    mainPageCartList.innerHTML = itemsHtml;
+
+                    mainPageCartSummary.innerHTML = `
+                    <div class="d-flex justify-content-end align-items-center mt-4 p-3 bg-light rounded">
+                        <h5 class="mb-0">Total: <strong>${cartData.total_items}</strong> Buku di Keranjang</h5>
                     </div>
                 `;
-            } else {
-                mainPageCartList.innerHTML = `<div class="alert text-center p-4"><i class="fas fa-box-open fa-3x text-muted"></i><br>Keranjang kosong. Silakan scan barcode buku.</div>`;
-                mainPageCartSummary.innerHTML = '';
-            }
-        })
-        .catch(err => {
-            console.error("Fetch Cart Error:", err);
-            mainPageCartList.innerHTML = `<div class="alert alert-danger">Terjadi kesalahan jaringan saat memuat keranjang.</div>`;
-        });
+                } else {
+                    mainPageCartList.innerHTML = `<div class="alert text-center p-4"><i class="fas fa-box-open fa-3x text-muted"></i><br>Keranjang kosong. Silakan scan barcode buku.</div>`;
+                    mainPageCartSummary.innerHTML = '';
+                }
+            })
+            .catch(err => {
+                console.error("Fetch Cart Error:", err);
+                mainPageCartList.innerHTML = `<div class="alert alert-danger">Terjadi kesalahan jaringan saat memuat keranjang.</div>`;
+            });
     }
 
     // Fungsi untuk memicu cetak struk setelah transaksi sukses
@@ -313,11 +312,11 @@ document.addEventListener('DOMContentLoaded', (event) => {
         // Ambil data buku dan info member yang terotorisasi
         const items = loanData.print_receipts || loanData.borrowed_items || [];
         const memberName = authorizedUserData ? authorizedUserData.member_name : 'Anggota';
-        const memberId = authorizedUserData ? authorizedUserData.nomor_induk : '';
-        
+        const memberId = authorizedUserData ? authorizedUserData.member_id : '';
+
         // Susun URL printer ke Route khusus dengan query parameter data struk
         const printUrl = `/print/struk?data=${encodeURIComponent(JSON.stringify(items))}&member_name=${encodeURIComponent(memberName)}&member_id=${encodeURIComponent(memberId)}`;
-        
+
         // Buka jendela/pop-up kecil baru di latar belakang untuk melakukan cetak otomatis
         let iframe = document.getElementById('silent-print-iframe');
         if (!iframe) {
@@ -329,12 +328,12 @@ document.addEventListener('DOMContentLoaded', (event) => {
             iframe.style.border = 'none';
             document.body.appendChild(iframe);
         }
-        
+
         // Masukkan URL struk ke dalam iframe tersebut
         iframe.src = printUrl;
     }
 
-    window.removeBookFromCart = function(itemCode, itemTitle) {
+    window.removeBookFromCart = function (itemCode, itemTitle) {
         Swal.fire({
             title: "Hapus buku?",
             text: `Keluarkan "${itemTitle}" dari keranjang?`,
@@ -345,18 +344,18 @@ document.addEventListener('DOMContentLoaded', (event) => {
             customClass: { confirmButton: "btn btn-danger", cancelButton: "btn btn-secondary" }
         }).then((result) => {
             if (result.isConfirmed) {
-                fetch('/cart-loan/cart-item', { 
-                    method: 'DELETE', headers: header_data, 
-                    body: JSON.stringify({ item_code: itemCode }) 
+                fetch('/cart-loan/cart-item', {
+                    method: 'DELETE', headers: header_data,
+                    body: JSON.stringify({ item_code: itemCode })
                 })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.status) {
-                        refreshMainPageCart();
-                    } else {
-                        Swal.fire('Gagal', data.message, 'error');
-                    }
-                });
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status) {
+                            refreshMainPageCart();
+                        } else {
+                            Swal.fire('Gagal', data.message, 'error');
+                        }
+                    });
             }
         });
     }
@@ -375,27 +374,27 @@ document.addEventListener('DOMContentLoaded', (event) => {
             customClass: { confirmButton: "btn btn-success", cancelButton: "btn btn-secondary" }
         }).then((result) => {
             if (result.isConfirmed) {
-                Swal.fire({ title: 'Memproses...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
-                
+                Swal.fire({ title: 'Memproses...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+
                 fetch('/loan/complete-loan', { method: 'POST', headers: header_data })
-                .then(res => res.json())
-                .then(data => {
-                    if(data.status) {
-                        triggerAutoPrint(data.data);
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Berhasil!',
-                            text: 'Buku berhasil dipinjam. Struk sedang dicetak...',
-                            timer: 3000,
-                            showConfirmButton: false
-                        }).then(() => {
-                            location.reload();
-                        });
-                    } else {
-                        Swal.fire('Gagal', data.message, 'error');
-                    }
-                })
-                .catch(err => Swal.fire('Error', 'Terjadi kesalahan sistem.', 'error'));
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status) {
+                            triggerAutoPrint(data.data);
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Berhasil!',
+                                text: 'Buku berhasil dipinjam. Struk sedang dicetak...',
+                                timer: 3000,
+                                showConfirmButton: false
+                            }).then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire('Gagal', data.message, 'error');
+                        }
+                    })
+                    .catch(err => Swal.fire('Error', 'Terjadi kesalahan sistem.', 'error'));
             }
         });
     });
@@ -412,8 +411,8 @@ document.addEventListener('DOMContentLoaded', (event) => {
         }).then((result) => {
             if (result.isConfirmed) {
                 fetch('/cart-loan/cart-clear', { method: 'DELETE', headers: header_data })
-                .then(() => location.reload())
-                .catch(() => location.reload());
+                    .then(() => location.reload())
+                    .catch(() => location.reload());
             }
         });
     });
