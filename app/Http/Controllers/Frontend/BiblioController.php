@@ -205,9 +205,8 @@ class BiblioController extends Controller
     {
         $memberData = Session::get('biblio_user');
 
-        if ($memberData) {
-            // opsional: kosongkan cart peminjaman yang belum di-checkout
-            CartLoan::getMemberIdInCart($memberData['user_id'])?->delete();
+        if ($memberData && isset($memberData['member_id'])) {
+            CartLoan::getMemberIdInCart($memberData['member_id'])?->delete();
         }
 
         Session::forget('biblio_user');
