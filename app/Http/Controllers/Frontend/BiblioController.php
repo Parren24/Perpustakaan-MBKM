@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Session;
 use App\Services\Frontend\SafeDataService;
 use App\Services\Frontend\BiblioService;
+use App\Models\CartLoan;
 
 class BiblioController extends Controller
 {
@@ -149,7 +150,7 @@ class BiblioController extends Controller
             'member_id'          => $kiosData['member_id'],
             'member_name'        => $kiosData['member_name'],
             'authorized_at'      => now()->toISOString(),
-            'session_expires_at' => now()->addMinutes(10)->toISOString()
+            'session_expires_at' => now()->addMinutes(1)->toISOString()
         ]);
 
         Cache::forget('kios_' . $sessionId); // Hapus agar tidak dipakai ulang
@@ -183,5 +184,34 @@ class BiblioController extends Controller
             'memberData' => $memberData,
             'pageConfig' => $pageConfig
         ]);
+    }
+
+    public function extendKiosSession(Request $request)
+    {
+        $memberData = Session::get('biblio_user');
+
+        if (!$memberData) {
+            return response()->json(['status' => false, 'message' => 'Sesi tidak ditemukan.'], 401);
+        }
+
+        // reset waktu expired setiap kali user klik "Masih"
+        $memberData['session_expires_at'] = now()->addMinutes(10)->toISOString();
+        Session::put('biblio_user', $memberData);
+
+        return response()->json(['status' => true]);
+    }
+
+    public function closeKiosSession(Request $request)
+    {
+        $memberData = Session::get('biblio_user');
+
+        if ($memberData) {
+            // opsional: kosongkan cart peminjaman yang belum di-checkout
+            CartLoan::getMemberIdInCart($memberData['user_id'])?->delete();
+        }
+
+        Session::forget('biblio_user');
+
+        return response()->json(['status' => true]);
     }
 }

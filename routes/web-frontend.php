@@ -26,6 +26,7 @@ Route::get(
         return redirect()->route('frontend.articles.show', ['articlesSlug' => $slug], 301);
     }
 )->where('numeric', '[0-9]+');
+// routes/web-frontend.php
 
 // Frontend Routes
 Route::name('frontend.')->group(function () {
@@ -35,20 +36,14 @@ Route::name('frontend.')->group(function () {
 
     Route::prefix('/biblio')->name('biblio.')->controller(BiblioController::class)->group(function () {
         Route::get('/', 'index')->name('index');
-        Route::get('/pengembalian', 'returnLoanPage')->name('return-loan'); // ini Halaman
-        Route::get('/modul/modul-loan', 'modulLoanPage')->name('modul.modul-loan'); 
+        Route::get('/pengembalian', 'returnLoanPage')->name('return-loan');
+        Route::get('/modul/modul-loan', 'modulLoanPage')->name('modul.modul-loan');
         Route::get('/modul/modul-return', 'modulReturnPage')->name('modul.modul-return');
         Route::get('/item/{item_code}', 'getItemInformation')->name('item-info');
         Route::post('/authorize-session', 'authorizeSession')->name('authorize-session');
-        Route::post('/add-to-cart', 'addBookToCartLoan')->name('add-to-cart');
-        Route::get('/cart-items', 'getCartItems')->name('cart-items');
-        Route::delete('/cart-item', 'removeFromCart')->name('remove-from-cart');
-        Route::delete('/cart-clear', 'clearCart')->name('clear-cart');
-        Route::post('/complete-loan', 'completeLoan')->name('complete-loan');
 
         // Mobile pages routes (no auth required for confirmation)
         Route::get('/konfirmasi/{token}', 'showConfirmation')->name('confirmation');
-
 
         //#####################################################
         Route::get('/kios/generate-qr-ajax', 'getKiosQrAjax')->name('kios.generate-qr-ajax');
@@ -56,12 +51,18 @@ Route::name('frontend.')->group(function () {
         Route::post('/kios/claim-session', 'claimKiosSession')->name('kios.claim-session');
         //#####################################################
 
-
-
-        // Routes that require biblio session
-        Route::middleware(['web', 'session'])->group(function () {
+        // Routes that require biblio session (semua butuh member_id aktif & belum expired)
+        Route::middleware(['kios.session'])->group(function () {
+            
             Route::get('/scan-buku', 'showScanBook')->name('scan-book');
             Route::get('/keranjang', 'showCart')->name('cart');
+            Route::post('/add-to-cart', 'addBookToCartLoan')->name('add-to-cart');
+            Route::get('/cart-items', 'getCartItems')->name('cart-items');
+            Route::delete('/cart-item', 'removeFromCart')->name('remove-from-cart');
+            Route::delete('/cart-clear', 'clearCart')->name('clear-cart');
+            Route::post('/complete-loan', 'completeLoan')->name('complete-loan');
+            Route::post('/kios/extend-session', 'extendKiosSession')->name('kios.extend-session');
+            Route::post('/kios/close-session', 'closeKiosSession')->name('kios.close-session');
         });
     });
 

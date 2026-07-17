@@ -139,17 +139,22 @@ function successMessage($message)
 
 function checkMemberUserValid($sessionData)
 {
-    $memberData = $sessionData;
-    if (!$sessionData || !isset($sessionData['user_id'])) {
+    if (!$sessionData || !isset($sessionData['member_id'])) {
         return errResponse(401, 'Sesi member tidak valid atau telah kedaluwarsa.');
     }
-    return $memberData;
+
+    if (isset($sessionData['session_expires_at']) && now()->isAfter($sessionData['session_expires_at'])) {
+        Session::forget('biblio_user');
+        return errResponse(401, 'Sesi telah kedaluwarsa. Silakan scan QR code lagi.');
+    }
+
+    return $sessionData;
 };
 
 function checkMemberNomorIndukValid($sessionData)
 {
     $memberData = $sessionData;
-    if (!isset($sessionData['nomor_induk']) || empty($sessionData['nomor_induk'])) {
+    if (!isset($sessionData['member_id']) || empty($sessionData['member_id'])) {
         return errResponse(401, 'Sesi member belum ter-otorisasi. Silakan scan QR code user terlebih dahulu.');
     }
     return $memberData;

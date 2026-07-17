@@ -110,6 +110,28 @@ document.addEventListener('DOMContentLoaded', (event) => {
         }
     });
 
+    function handleApiResponse(data) {
+            isProcessingScan = false;
+
+            Swal.fire({
+                icon: 'warning',
+                title: 'Sesi Berakhir',
+                text: data.message || 'Sesi Anda telah berakhir. Silakan scan QR code lagi.',
+                confirmButtonText: 'OK'
+            }).then(() => {
+                // Reset state kios ke kondisi awal (belum login)
+                userAuthorized = false;
+                authorizedUserData = null;
+                currentSessionId = null;
+
+                mainPageCartContainer.style.display = 'none';
+                if (launchScannerBtn) launchScannerBtn.style.display = 'block';
+                if (aturan) aturan.style.display = 'block';
+
+                scanModal.show(); // buka lagi modal QR
+                generateKiosQr(); // Generate ulang QR saat modal terbuka kembali
+            });
+        }
     // ==========================================
     // LOGIKA GENERATE QR & POLLING KIOS
     // ==========================================
@@ -210,6 +232,9 @@ document.addEventListener('DOMContentLoaded', (event) => {
         })
             .then(res => res.json())
             .then(data => {
+                if (data.expired === true) {
+                    return handleApiResponse(data);
+                }
                 if (data.status) {
                     msgDiv.innerHTML = `<div class="alert alert-success py-2 mb-0 text-center"><i class="fas fa-check-circle me-2"></i>Buku berhasil ditambahkan!</div>`;
                     refreshMainPageCart(); // Update UI Keranjang
@@ -225,7 +250,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
                         const mainBarcodeInput = document.getElementById('mainBarcodeInput');
                         if (mainBarcodeInput) mainBarcodeInput.focus();
                     }
-                }, 2500);
+                }, 5500);
             })
             .catch(err => {
                 isProcessingScan = false;
@@ -263,6 +288,9 @@ document.addEventListener('DOMContentLoaded', (event) => {
         fetch('/cart-loan/cart-items', { method: 'GET', headers: header_data })
             .then(res => res.json())
             .then(data => {
+                if (data.expired === true) {
+                    return handleApiResponse(data);
+                }
                 if (!data.status) {
                     mainPageCartList.innerHTML = `<div class="alert alert-danger">${data.message || 'Gagal memuat keranjang'}</div>`;
                     return;
@@ -379,6 +407,9 @@ document.addEventListener('DOMContentLoaded', (event) => {
                 fetch('/loan/complete-loan', { method: 'POST', headers: header_data })
                     .then(res => res.json())
                     .then(data => {
+                        if (data.expired === true) {
+                            return handleApiResponse(data);
+                        }
                         if (data.status) {
                             triggerAutoPrint(data.data);
                             Swal.fire({
