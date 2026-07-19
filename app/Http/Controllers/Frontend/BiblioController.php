@@ -227,4 +227,30 @@ class BiblioController extends Controller
 
         return response()->json(['status' => true]);
     }
+
+    public function showUnlockPin()
+    {
+        return view('contents.frontend.pages.biblio.kios-unlock');
+    }
+
+    public function verifyDevicePin(Request $request)
+    {
+        $request->validate(['pin' => 'required|string']);
+
+        if ($request->input('pin') !== config('services.kios.pin')) {
+            return response()->json(['status' => false, 'message' => 'PIN salah.'], 422);
+        }
+
+        $minutesUntilMidnight = now()->diffInMinutes(now()->endOfDay());
+
+        $cookie = cookie(
+            'kios_device_unlocked',
+            now()->toDateString(),      // value = tanggal hari ini, misal "2026-07-18"
+            $minutesUntilMidnight,      // expire otomatis pas ganti hari
+            '/', null, false, true      // httpOnly = true, tidak bisa dibaca via JS (lebih aman)
+        );
+
+        return response()->json(['status' => true, 'redirect' => route('frontend.biblio.index')])
+            ->withCookie($cookie);
+    }
 }
