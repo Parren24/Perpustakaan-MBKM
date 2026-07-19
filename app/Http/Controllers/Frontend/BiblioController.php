@@ -150,7 +150,7 @@ class BiblioController extends Controller
             'member_id'          => $kiosData['member_id'],
             'member_name'        => $kiosData['member_name'],
             'authorized_at'      => now()->toISOString(),
-            'session_expires_at' => now()->addMinutes(1)->toISOString()
+            'session_expires_at' => now()->addMinutes(config('services.kios.session_minutes'))->toISOString()
         ]);
 
         Cache::forget('kios_' . $sessionId); // Hapus agar tidak dipakai ulang
@@ -159,7 +159,8 @@ class BiblioController extends Controller
             'status' => true,
             'data' => [
                 'member_name' => $kiosData['member_name'],
-                'member_id' => $kiosData['member_id']
+                'member_id' => $kiosData['member_id'],
+                'session_expires_at' => Session::get('biblio_user.session_expires_at'),
             ]
         ]);
     }
@@ -186,19 +187,32 @@ class BiblioController extends Controller
         ]);
     }
 
-    public function extendKiosSession(Request $request)
+    public function checkKiosSessionStatus(Request $request)
     {
         $memberData = Session::get('biblio_user');
 
-        if (!$memberData) {
-            return response()->json(['status' => false, 'message' => 'Sesi tidak ditemukan.'], 401);
+        if (!$memberData || !isset($memberData['session_expires_at'])) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Sesi tidak ditemukan.',
+                'expired' => true,
+            ], 401);
         }
 
-        // reset waktu expired setiap kali user klik "Masih"
-        $memberData['session_expires_at'] = now()->addMinutes(10)->toISOString();
-        Session::put('biblio_user', $memberData);
+        if (now()->isAfter($memberData['session_expires_at'])) {
+            Session::forget('biblio_user');
+            return response()->json([
+                'status'  => false,
+                'message' => 'Sesi telah kedaluwarsa.',
+                'expired' => true,
+            ], 401);
+        }
 
-        return response()->json(['status' => true]);
+        // Cuma dikembalikan apa adanya, TIDAK diubah/diperpanjang
+        return response()->json([
+            'status'             => true,
+            'session_expires_at' => $memberData['session_expires_at'],
+        ]);
     }
 
     public function closeKiosSession(Request $request)

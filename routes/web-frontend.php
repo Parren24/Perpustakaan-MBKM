@@ -61,7 +61,7 @@ Route::name('frontend.')->group(function () {
             Route::delete('/cart-item', 'removeFromCart')->name('remove-from-cart');
             Route::delete('/cart-clear', 'clearCart')->name('clear-cart');
             Route::post('/complete-loan', 'completeLoan')->name('complete-loan');
-            Route::post('/kios/extend-session', 'extendKiosSession')->name('kios.extend-session');
+            Route::post('/kios/check-session', 'checkKiosSessionStatus')->name('kios.check-session');
             Route::post('/kios/close-session', 'closeKiosSession')->name('kios.close-session');
         });
     });

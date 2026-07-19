@@ -9,6 +9,8 @@ document.addEventListener('DOMContentLoaded', (event) => {
     let idleTimer = null;
     let idleCountdownInterval = null;
     let idleModalOpen = false;
+    let sessionExpiresAt = null;
+    let sessionCountdownInterval = null;
 
     // --- Elemen DOM ---
     const scanModalElement = document.getElementById('scanModal');
@@ -52,6 +54,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
         clearInterval(idleCountdownInterval);
         idleTimer = null;
         idleModalOpen = false;
+        stopSessionCountdown();
     }
 
     function showIdleAlert() {
@@ -81,8 +84,14 @@ document.addEventListener('DOMContentLoaded', (event) => {
             idleModalOpen = false;
 
             if (result.isConfirmed) {
-                fetch('/biblio/kios/extend-session', { method: 'POST', headers: header_data })
-                    .then(() => resetIdleTimer());
+                fetch('/biblio/kios/check-session', { method: 'POST', headers: header_data })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.expired === true || data.status === false) {
+                            return handleApiResponse(data);
+                        }
+                        resetIdleTimer();
+                    });
             } else {
                 fetch('/biblio/kios/close-session', { method: 'POST', headers: header_data })
                     .finally(() => location.reload());
@@ -94,6 +103,39 @@ document.addEventListener('DOMContentLoaded', (event) => {
     ['mousemove', 'keydown', 'click', 'touchstart', 'scroll'].forEach((evt) => {
         document.addEventListener(evt, resetIdleTimer, { passive: true });
     });
+
+    function startSessionCountdown(expiresAtIso) {
+        sessionExpiresAt = new Date(expiresAtIso);
+        clearInterval(sessionCountdownInterval);
+
+        sessionCountdownInterval = setInterval(() => {
+            const el = document.getElementById('sessionCountdownText');
+            if (!el) return; // elemen belum ada / sudah hilang dari DOM
+
+            const diffMs = sessionExpiresAt - new Date();
+
+            if (diffMs <= 0) {
+                clearInterval(sessionCountdownInterval);
+                el.textContent = '00:00';
+                return; // biarkan middleware/handleApiResponse yang menangani penutupan sesi sesungguhnya
+            }
+
+            const totalSeconds = Math.floor(diffMs / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+
+            el.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+            // opsional: kasih warna beda kalau sudah tinggal < 1 menit
+            el.classList.toggle('text-danger', totalSeconds <= 60);
+            el.classList.toggle('text-primary', totalSeconds > 60);
+        }, 1000);
+    }
+
+    function stopSessionCountdown() {
+        clearInterval(sessionCountdownInterval);
+        sessionExpiresAt = null;
+    }
 
     launchScannerBtn.addEventListener('click', () => {
         scanModal.show();
@@ -251,6 +293,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
                     authorizedUserData = data.data;
                     scanModal.hide();
                     resetIdleTimer();
+                    startSessionCountdown(data.data.session_expires_at); 
 
                     Swal.fire({
                         icon: 'success', title: 'Otorisasi Berhasil',
@@ -332,7 +375,10 @@ document.addEventListener('DOMContentLoaded', (event) => {
                 <div class="alert alert-light border-0 h-100 shadow-sm d-flex flex-column justify-content-center">
                     <h3 class="fw-bolder">Halo, ${authorizedUserData.member_name}!</h3>
                     <p class="mb-3 text-muted">Sistem siap. Silakan langsung scan barcode fisik buku Anda.</p>
-                    
+                    <p class="mb-3">
+                        <i class="fas fa-clock me-1"></i>
+                        Sesi berakhir dalam: <strong id="sessionCountdownText" class="text-primary">--:--</strong>
+                    </p>
                     <div id="mainScannerMessage" class="mt-2 w-100" style="min-height: 40px;"></div>
                 </div>`;
         }
@@ -440,6 +486,9 @@ document.addEventListener('DOMContentLoaded', (event) => {
                 })
                     .then(res => res.json())
                     .then(data => {
+                        if (data.expired === true) {
+                            return handleApiResponse(data);
+                        }
                         if (data.status) {
                             refreshMainPageCart();
                         } else {

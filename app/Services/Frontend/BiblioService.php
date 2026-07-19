@@ -320,7 +320,7 @@ class BiblioService
                     'member_id' => $sessionData['member_id'],
                     'member_name' => $member->member_name ?? $sessionData['member_name'],
                     'authorized_at' => now()->toISOString(),
-                    'session_expires_at' => now()->addMinutes(10)->toISOString()
+                    'session_expires_at' => now()->addMinutes(1)->toISOString()
                 ]);
                 Log::info('authorizeSession: Session set successfully');
             } catch (\Exception $e) {
@@ -345,7 +345,7 @@ class BiblioService
                     'member_name' => $member->member_name ?? $sessionData['member_name'],
                     'member_id' => $member->member_id ?? $sessionData['member_id'],
                     'loan_info' => $loanInfo,
-                    'session_expires_at' => now()->addMinutes(30)->toISOString()
+                    'session_expires_at' => now()->addMinutes(1)->toISOString()
                 ];
 
                 return successResponse($responseData, 'Sesi berhasil diverifikasi. Silakan scan barcode buku.');

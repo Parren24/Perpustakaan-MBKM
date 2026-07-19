@@ -8,6 +8,9 @@ document.addEventListener('DOMContentLoaded', (event) => {
     let currentSessionId = null;
     let barcodeBuffer = "";
     let barcodeTimeout = null;
+    let idleTimer = null;
+    let idleCountdownInterval = null;
+    let idleModalOpen = false;
 
     // --- Elemen DOM ---
     const scanModalElement = document.getElementById('scanModal');
@@ -30,6 +33,9 @@ document.addEventListener('DOMContentLoaded', (event) => {
     const mainPageCartSummary = document.getElementById('mainPageCartSummary');
     const mainCheckoutBtn = document.getElementById('mainCheckoutBtn');
 
+    const IDLE_LIMIT_MS = 10000; // 10 detik tanpa aktivitas
+    const COUNTDOWN_SEC = 7;
+
     const header_data = {
         'Content-Type': 'application/json',
         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
@@ -42,6 +48,60 @@ document.addEventListener('DOMContentLoaded', (event) => {
             scanModal.show();
         });
     }
+
+    function resetIdleTimer() {
+        if (!userAuthorized || idleModalOpen) return; // cuma jalan kalau sudah login & modal idle belum terbuka
+        clearTimeout(idleTimer);
+        idleTimer = setTimeout(showIdleAlert, IDLE_LIMIT_MS);
+    }
+
+    function stopIdleWatcher() {
+        clearTimeout(idleTimer);
+        clearInterval(idleCountdownInterval);
+        idleTimer = null;
+        idleModalOpen = false;
+    }
+
+    function showIdleAlert() {
+        idleModalOpen = true;
+        let timeLeft = COUNTDOWN_SEC;
+
+        Swal.fire({
+            title: 'Apakah anda masih disana?',
+            html: `Sesi akan ditutup otomatis dalam <b>${timeLeft}</b> detik.`,
+            icon: 'warning',
+            showCancelButton: true,
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            confirmButtonText: 'Masih',
+            cancelButtonText: 'Tutup Sesi',
+            timer: COUNTDOWN_SEC * 1000,
+            timerProgressBar: true,
+            didOpen: () => {
+                const el = Swal.getHtmlContainer().querySelector('b');
+                idleCountdownInterval = setInterval(() => {
+                    timeLeft--;
+                    if (el) el.textContent = Math.max(timeLeft, 0);
+                }, 1000);
+            },
+            willClose: () => clearInterval(idleCountdownInterval)
+        }).then((result) => {
+            idleModalOpen = false;
+
+            if (result.isConfirmed) {
+                fetch('/biblio/kios/extend-session', { method: 'POST', headers: header_data })
+                    .then(() => resetIdleTimer());
+            } else {
+                fetch('/biblio/kios/close-session', { method: 'POST', headers: header_data })
+                    .finally(() => location.reload());
+            }
+        });
+    }
+
+    // Pantau aktivitas user secara global
+    ['mousemove', 'keydown', 'click', 'touchstart', 'scroll'].forEach((evt) => {
+        document.addEventListener(evt, resetIdleTimer, { passive: true });
+    });
 
     window.addEventListener('keypress', function(e) {
         // Abaikan jika user belum login, atau modal scan QR sedang terbuka, atau sistem sedang memproses buku

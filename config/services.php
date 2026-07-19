@@ -44,4 +44,8 @@ return [
     'pcr' => [
         'key' => env('PCR_API_KEY'),
     ],
+    'kios' => [
+        'pin' => env('KIOS_DEVICE_PIN'),
+        'session_minutes' => (int) env('KIOS_SESSION_MINUTES', 10), // ⬅️ tambahkan ini
+    ],
 ];

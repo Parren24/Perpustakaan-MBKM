@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Session;
+use App\Exceptions\KiosSessionExpiredException;
 
 function thumbnail($fileName = '')
 {
@@ -140,12 +141,12 @@ function successMessage($message)
 function checkMemberUserValid($sessionData)
 {
     if (!$sessionData || !isset($sessionData['member_id'])) {
-        return errResponse(401, 'Sesi member tidak valid atau telah kedaluwarsa.');
+        throw new KiosSessionExpiredException('Sesi member tidak valid atau telah kedaluwarsa.');
     }
 
     if (isset($sessionData['session_expires_at']) && now()->isAfter($sessionData['session_expires_at'])) {
         Session::forget('biblio_user');
-        return errResponse(401, 'Sesi telah kedaluwarsa. Silakan scan QR code lagi.');
+        throw new KiosSessionExpiredException('Sesi telah kedaluwarsa. Silakan scan QR code lagi.');
     }
 
     return $sessionData;
@@ -153,9 +154,8 @@ function checkMemberUserValid($sessionData)
 
 function checkMemberNomorIndukValid($sessionData)
 {
-    $memberData = $sessionData;
     if (!isset($sessionData['member_id']) || empty($sessionData['member_id'])) {
-        return errResponse(401, 'Sesi member belum ter-otorisasi. Silakan scan QR code user terlebih dahulu.');
+        throw new KiosSessionExpiredException('Sesi member belum ter-otorisasi. Silakan scan QR code user terlebih dahulu.');
     }
-    return $memberData;
+    return $sessionData;
 };
