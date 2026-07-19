@@ -182,6 +182,7 @@ class LoanService
         DB::beginTransaction();
 
         try {
+            checkMemberUserValid($memberData);
             $loan = Loan::where('loan_id', $loanId)
                 ->where('member_id', $memberData['member_id'])
                 ->where('is_return', 0)
@@ -234,7 +235,13 @@ class LoanService
             DB::commit();
 
             return successResponse(null, 'Buku berhasil dikembalikan. Terima kasih!');
-        } catch (\Exception $e) {
+        }
+        catch (\App\Exceptions\KiosSessionExpiredException $e) {
+            DB::rollBack();
+            throw $e; // lempar lagi ke controller, biar controller yang convert ke response (pola yang sama seperti getLoan/completeLoan)
+        }  
+        
+        catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error in returnLoanItem: ' . $e->getMessage());
             return errResponse(500, 'Terjadi kesalahan saat memproses pengembalian. Silakan coba lagi.');

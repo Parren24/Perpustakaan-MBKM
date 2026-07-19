@@ -11,6 +11,8 @@ document.addEventListener('DOMContentLoaded', (event) => {
     let idleTimer = null;
     let idleCountdownInterval = null;
     let idleModalOpen = false;
+    let sessionExpiresAt = null;
+    let sessionCountdownInterval = null;
 
     // --- Elemen DOM ---
     const scanModalElement = document.getElementById('scanModal');
@@ -89,8 +91,14 @@ document.addEventListener('DOMContentLoaded', (event) => {
             idleModalOpen = false;
 
             if (result.isConfirmed) {
-                fetch('/biblio/kios/extend-session', { method: 'POST', headers: header_data })
-                    .then(() => resetIdleTimer());
+                fetch('/biblio/kios/check-session', { method: 'POST', headers: header_data })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.expired === true || data.status === false) {
+                            return handleApiResponse(data);
+                        }
+                        resetIdleTimer();
+                    });
             } else {
                 fetch('/biblio/kios/close-session', { method: 'POST', headers: header_data })
                     .finally(() => location.reload());
@@ -102,6 +110,39 @@ document.addEventListener('DOMContentLoaded', (event) => {
     ['mousemove', 'keydown', 'click', 'touchstart', 'scroll'].forEach((evt) => {
         document.addEventListener(evt, resetIdleTimer, { passive: true });
     });
+
+    function startSessionCountdown(expiresAtIso) {
+        sessionExpiresAt = new Date(expiresAtIso);
+        clearInterval(sessionCountdownInterval);
+
+        sessionCountdownInterval = setInterval(() => {
+            const el = document.getElementById('sessionCountdownText');
+            if (!el) return; // elemen belum ada / sudah hilang dari DOM
+
+            const diffMs = sessionExpiresAt - new Date();
+
+            if (diffMs <= 0) {
+                clearInterval(sessionCountdownInterval);
+                el.textContent = '00:00';
+                return; // biarkan middleware/handleApiResponse yang menangani penutupan sesi sesungguhnya
+            }
+
+            const totalSeconds = Math.floor(diffMs / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+
+            el.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+            // opsional: kasih warna beda kalau sudah tinggal < 1 menit
+            el.classList.toggle('text-danger', totalSeconds <= 60);
+            el.classList.toggle('text-primary', totalSeconds > 60);
+        }, 1000);
+    }
+
+    function stopSessionCountdown() {
+        clearInterval(sessionCountdownInterval);
+        sessionExpiresAt = null;
+    }
 
     window.addEventListener('keypress', function(e) {
         // Abaikan jika user belum login, atau modal scan QR sedang terbuka, atau sistem sedang memproses buku
@@ -146,13 +187,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
         const scanModalLabel = document.getElementById('scanModalLabel');
 
         if (!userAuthorized) {
-            // --- MODE LOGIN QR ---
-            kiosQrContainer.style.display = 'block';
-            barcodeInputContainer.style.display = 'none';
-
-            if (scanModalLabel) scanModalLabel.innerHTML = '<i class="fas fa-qrcode me-2"></i> Otorisasi Pengembalian';
-            
-            generateKiosQr(); 
+            switchToQrLoginMode();
         } else if (itemToReturn) {
             // --- MODE SCANNER FISIK (KONFIRMASI BUKU) ---
             kiosQrContainer.style.display = 'none';
@@ -252,7 +287,43 @@ document.addEventListener('DOMContentLoaded', (event) => {
     // ==========================================
     // LOGIKA GENERATE QR & POLLING KIOS
     // ==========================================
+    function handleApiResponse(data) {
+            isProcessingScan = false;
+            stopIdleWatcher();
+            showModalLoading(false);
 
+            Swal.fire({
+                icon: 'warning',
+                title: 'Sesi Berakhir',
+                text: data.message || 'Sesi Anda telah berakhir. Silakan scan QR code lagi.',
+                confirmButtonText: 'OK'
+            }).then(() => {
+                // Reset state kios ke kondisi awal (belum login)
+                userAuthorized = false;
+                authorizedUserData = null;
+                currentSessionId = null;
+
+                mainPageCartContainer.style.display = 'none';
+                if (launchScannerBtn) launchScannerBtn.style.display = 'block';
+                if (aturan) aturan.style.display = 'block';
+
+                itemToReturn = null; // reset state, biar tidak nyangkut ke item lama
+
+                if (scanModalElement.classList.contains('show')) {
+                    switchToQrLoginMode(); // modal sudah terbuka -> reset tampilan manual langsung
+                } else {
+                    scanModal.show(); // modal belum terbuka -> biarkan event 'shown.bs.modal' yang urus
+                }
+            });
+        }
+
+    function switchToQrLoginMode() {
+        const scanModalLabel = document.getElementById('scanModalLabel');
+        kiosQrContainer.style.display = 'block';
+        barcodeInputContainer.style.display = 'none';
+        if (scanModalLabel) scanModalLabel.innerHTML = '<i class="fas fa-qrcode me-2"></i> Otorisasi Pengembalian';
+        generateKiosQr();
+    }
     function generateKiosQr() {
         scannerMessage.textContent = 'Menghasilkan QR Code...';
         scannerMessage.className = 'alert alert-light mb-2 text-center';
@@ -304,6 +375,8 @@ document.addEventListener('DOMContentLoaded', (event) => {
                 userAuthorized = true;
                 authorizedUserData = data.data;
                 scanModal.hide(); 
+                resetIdleTimer();
+                startSessionCountdown(data.data.session_expires_at);
                 initializeMainPage(); 
 
                 Swal.fire({
@@ -326,7 +399,10 @@ document.addEventListener('DOMContentLoaded', (event) => {
                 <div class="alert alert-light border-0 h-100 shadow-sm d-flex flex-column justify-content-center">
                     <h3 class="fw-bolder">Halo, ${authorizedUserData.member_name}!</h3>
                     <p class="mb-3 text-muted">Sistem siap. Silakan langsung scan barcode fisik buku yang ingin dikembalikan.</p>
-                    
+                    <p class="mb-3">
+                        <i class="fas fa-clock me-1"></i>
+                        Sesi berakhir dalam: <strong id="sessionCountdownText" class="text-primary">--:--</strong>
+                    </p>
                    
                 </div>`;
         }
@@ -345,8 +421,13 @@ document.addEventListener('DOMContentLoaded', (event) => {
 
         fetch('/loan/active-loans', { headers: header_data })
             .then(r => r.json())
+            
             .then(data => {
+
                 showMainPageLoading(false);
+                if (data.expired === true) {
+                            return handleApiResponse(data);
+                        }
                 if (data.status) {
                     const loans = data.data.active_loans || data.data;
                     renderLoanList(loans);
@@ -412,6 +493,9 @@ document.addEventListener('DOMContentLoaded', (event) => {
         })
         .then(r => r.json())
         .then(data => {
+            if (data.expired === true) {
+                return handleApiResponse(data);
+            }
             showModalLoading(false);
             if (data.status) {
                 scanModal.hide();
