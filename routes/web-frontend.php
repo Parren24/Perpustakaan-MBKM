@@ -33,12 +33,12 @@ Route::name('frontend.')->group(function () {
 
     Route::get('/biblio/kios/unlock', [BiblioController::class, 'showUnlockPin'])->name('biblio.kios.unlock');
     Route::post('/biblio/kios/unlock', [BiblioController::class, 'verifyDevicePin'])->name('biblio.kios.unlock.submit');
-    Route::middleware(['kios.pin'])->group(function () {
-        Route::controller(MainController::class)->group(function () {
-            Route::get('/', 'index')->name('home');
+    Route::controller(MainController::class)->group(function () {
+        Route::get('/', 'index')->name('home');
         });
+    Route::middleware(['kios.pin'])->group(function () {
         Route::prefix('/biblio')->name('biblio.')->controller(BiblioController::class)->group(function () {
-            Route::get('/', 'index')->name('index');
+            Route::get('/peminjaman', 'index')->name('index');
             Route::get('/pengembalian', 'returnLoanPage')->name('return-loan');
             Route::get('/modul/modul-loan', 'modulLoanPage')->name('modul.modul-loan');
             Route::get('/modul/modul-return', 'modulReturnPage')->name('modul.modul-return');

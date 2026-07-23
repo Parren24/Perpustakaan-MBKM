@@ -81,21 +81,21 @@
                                     @endif
                                 </li>
                             @endforeach
-                        <li class="nav-item d-md-none">
+                        <!-- <li class="nav-item d-md-none">
                                 <a class="nav-link" href="{{ route('login.google', ['provider' => 'google']) }}">
                                     Login
                                 </a>
-                            </li>
+                            </li> -->
                         </ul>
                     </div>
                 </div>
 
-                <div class="header-btn-- d-inline-flex d-none d-md-block mt-md-2">
+                <!-- <div class="header-btn-- d-inline-flex d-none d-md-block mt-md-2">
                     <a href="{{ route('login.google', ['provider' => 'google']) }}"
                         class="btn-default btn-highlighted text-nowrap contact-button-">
                         Login
                     </a>
-                </div>
+                </div> -->
                 <div class="navbar-toggle"></div>
             </div>
         </nav>

@@ -13,7 +13,7 @@ class HeaderMenuComposer
         $menu = [
             [
                 'name'  => 'Peminjaman Buku & Modul',
-                'route' => route('frontend.home'),
+                'route' => route('frontend.biblio.index'),
                 'icon'  => 'fas fa-book',
             ],
 
