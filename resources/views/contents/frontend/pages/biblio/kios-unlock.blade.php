@@ -1,5 +1,5 @@
-{{-- resources/views/contents/frontend/pages/biblio/kios-unlock.blade.php --}}
-@extends('layouts.frontend.main')
+<!-- 
+@extends('layouts.frontend.main') -->
 
 @section('content')
 <style>
@@ -77,10 +77,16 @@
                     <div class="card border border-1 lg-4 pb-1 rounded bg-opacity-75 wow fadeInUp" data-wow-delay="0.5s">
                         <div class="card-body d-flex justify-content-center align-items-center flex-column">
 
-                            <div class="text-center mb-1">
+                            <div class="text-center">
                                 <h4 class="fw-bold mb-1">Aktivasi Kios</h4>
                                 <p class="text-muted small">Masukkan PIN Keamanan</p>
+                                <div class ="col">
+                                    <div class="text-center">
+                                            <span id="pinError" class="text-danger small"></span>
+                                    </div>
+                                </div>
                             </div>
+
 
                             <!-- Hidden input untuk menerima fokus keyboard fisik & menyimpan value -->
                             <input type="password" id="kiosPinInput" style="opacity: 0; position: absolute; pointer-events: none;" maxlength="6" inputmode="numeric" autofocus>
@@ -111,7 +117,6 @@
                                     <button class="keypad-btn action-btn" id="backspaceBtn">⌫</button>
                                 </div>
 
-                                
                             </div>
                         </div>
                     </div>
@@ -126,11 +131,11 @@
         const pinInput = document.getElementById('kiosPinInput');
         const dots = document.querySelectorAll('.pin-dot');
         const pinError = document.getElementById('pinError');
-        const submitBtn = document.getElementById('submitPinBtn');
+
         const maxDigits = dots.length; // Mengikuti jumlah elemen .pin-dot (6 digit)
 
         // Update tampilan titik-titik indikator PIN
-        function updateDots() {
+        function updateDots(clearError = true) {
             const val = pinInput.value;
             dots.forEach((dot, index) => {
                 if (index < val.length) {
@@ -140,12 +145,10 @@
                 }
             });
 
-            // Hapus pesan error saat pengguna mulai mengetik ulang
-            if (pinError.textContent !== '') {
+            if (clearError && pinError.textContent !== '') {
                 pinError.textContent = '';
             }
 
-            // Auto Submit jika PIN sudah lengkap
             if (val.length === maxDigits) {
                 submitPin();
             }
@@ -200,18 +203,13 @@
                 return;
             }
 
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Memproses...';
-
             fetch('{{ route("frontend.biblio.kios.unlock.submit") }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                     },
-                    body: JSON.stringify({
-                        pin: pinValue
-                    })
+                    body: JSON.stringify({ pin: pinValue })
                 })
                 .then(res => res.json())
                 .then(data => {
@@ -220,19 +218,15 @@
                     } else {
                         pinError.textContent = data.message || 'PIN salah, silakan coba lagi.';
                         pinInput.value = '';
-                        updateDots();
-                        submitBtn.disabled = false;
-                        submitBtn.textContent = 'Aktivasi Device';
+                        updateDots(false);
                     }
                 })
                 .catch(err => {
                     pinError.textContent = 'Terjadi kesalahan jaringan.';
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Aktivasi Device';
                 });
         }
 
-        submitBtn.addEventListener('click', submitPin);
+
     });
 </script>
 @endsection

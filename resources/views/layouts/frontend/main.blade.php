@@ -13,8 +13,10 @@
 @include('contents.frontend.partials.common.header')
 @endif
 
-<main>
+<main class="flex-grow-1 d-flex flex-column">
+
     @yield('content')
+
 </main>
 
 @push('head')

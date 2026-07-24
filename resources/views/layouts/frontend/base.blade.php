@@ -56,7 +56,7 @@
     @stack('head')
 </head>
 
-<body class="d-flex flex-column justify-content-between min-vh-100">
+<body class="d-flex flex-column min-vh-100">
     @yield('base-content')
 
     @stack('script')

@@ -372,7 +372,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
     function initializeMainPageCart() {
         if (authorizedUserData) {
             mainPageUserInfo.innerHTML = `
-                <div class="alert alert-light border-0 h-100 shadow-sm d-flex flex-column justify-content-center">
+                <div class="alert alert-light border-0 h-100  d-flex flex-column justify-content-center">
                     <h3 class="fw-bolder">Halo, ${authorizedUserData.member_name}!</h3>
                     <p class="mb-3 text-muted">Sistem siap. Silakan langsung scan barcode fisik buku Anda.</p>
                     <p class="mb-3">

@@ -11,9 +11,9 @@
                     <img src="{{ data_get($siteIdentity, 'identity.logo_path') }}" alt="Logo" class="navbar-logo">
                 </a>
 
-                <div class="collapse navbar-collapse main-menu">
+                <div class="collapse navbar-collapse main-menu ">
                     <div class="nav-menu-wrapper">
-                        <ul class="navbar-nav mr-auto" id="menu">
+                        <ul class="navbar-nav mr-auto " id="menu">
                             <li class="nav-item toggle-menu">
                                 <div class="navbar-brand">
                                     <img src="{{ data_get($siteIdentity, 'identity.logo_path') }}" alt="Logo"
@@ -22,6 +22,9 @@
 
                                 <div class="navbar-toggle navbar-toggle-responsive"></div>
                             </li>
+                            @if(request()->cookie('kios_device_unlocked') === now()->toDateString())
+ 
+                      
                             @foreach ($menu as $menu_item)
                                 @php
                                     $class = 'nav-item';
@@ -81,6 +84,7 @@
                                     @endif
                                 </li>
                             @endforeach
+                                  @endif
                         <!-- <li class="nav-item d-md-none">
                                 <a class="nav-link" href="{{ route('login.google', ['provider' => 'google']) }}">
                                     Login
@@ -99,7 +103,7 @@
                 <div class="navbar-toggle"></div>
             </div>
         </nav>
-        <div class="responsive-menu slicknav_state">
+        <div class="responsive-menu slicknav_state mt-3">
 
         
         </div>

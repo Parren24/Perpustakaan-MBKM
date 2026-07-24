@@ -1,10 +1,10 @@
 <x-frontend.seo :pageConfig="$pageConfig" />
 
-<section class="fact-statistics-section layanan-section">
+<section class="fact-statistics-section layanan-section flex-grow-1 d-flex align-items-center" >
     <div class="container pt-5 pb-5">
         <div class="row justify-content-center " id="aturan">
             <div class="col">
-                <div class="card border border-1 mb-3 lg-4 pb-2 rounded bg-opacity-75 wow fadeInUp" data-wow-delay="0.5s">
+                <div class=" mb-3 lg-4 pb-2 rounded bg-opacity-75 wow fadeInUp" data-wow-delay="0.5s">
                     <div class="card-body d-flex justify-content-center align-items-center flex-column">
                         <div class="p-4 align-items-center">
                             <H4 class="text-center">Aturan Pengembalian buku</H4>
@@ -68,11 +68,11 @@
             <div class="modal-body">
                 <div class="row">
                     <div class="col-12" id="reader-container">
-                        <div id="scannerMessage" class="alert alert-light mb-2 text-center">
+                        <div id="scannerMessage" class="mb-2 w-100 text-center text-muted">
                             Menghasilkan QR Code...
                         </div>
                         
-                        <div id="kiosQrContainer" class="text-center p-3 bg-white rounded shadow-sm mb-3" style="display: none;">
+                        <div id="kiosQrContainer" class="text-center mb-3" style="display: none;">
                             <div id="qrImageWrapper"></div> 
                             <p class="text-muted small mt-2">Scan QR Code ini menggunakan HP Anda</p>
                         </div>
