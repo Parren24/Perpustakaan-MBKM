@@ -25,9 +25,9 @@
     }
 
     .pin-dot.filled {
-        background-color: #0d6efd;
+        background-color: #eb0000;
         /* Ubah ke warna brand Anda */
-        border-color: #0d6efd;
+        border-color: #eb0000;
         transform: scale(1.1);
     }
 
@@ -80,9 +80,9 @@
                             <div class="text-center">
                                 <h4 class="fw-bold mb-1">Aktivasi Kios</h4>
                                 <p class="text-muted small">Masukkan PIN Keamanan</p>
-                                <div class ="col">
+                                <div class="col">
                                     <div class="text-center">
-                                            <span id="pinError" class="text-danger small"></span>
+                                        <span id="pinError" class="text-danger small"></span>
                                     </div>
                                 </div>
                             </div>
@@ -209,7 +209,9 @@
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                     },
-                    body: JSON.stringify({ pin: pinValue })
+                    body: JSON.stringify({
+                        pin: pinValue
+                    })
                 })
                 .then(res => res.json())
                 .then(data => {

@@ -23,12 +23,12 @@
                     <div class="peminjaman-form w-100">
                         
                         <div class="text-center" id="startBtnContainer">
-                            <div class="mb-4">
-                                <i class="fas fa-qrcode fs-3x text-primary mb-3"></i>
-                                <h3 class="fw-bold text-dark">Transaksi Peminjaman</h3>
+                            <div class="mb-6">
+                                <i class="fas fa-qrcode fs-3x text-primary pb-5"></i>
+                                <h3 class="fw-bold text-dark mb-3">Transaksi Peminjaman</h3>
                                 <p class="text-muted">Arahkan kamera HP Anda ke layar Kios Perpustakaan untuk memulai sesi.</p>
                             </div>
-                            <button type="button" class="btn btn-success btn-lg px-5 mt-2" onclick="startScannerKios()">
+                            <button type="button" class="btn btn-success btn-lg px-5 mt-4 mb-4" onclick="startScannerKios()">
                                 <i class="fas fa-camera me-2"></i>Mulai Scan Kios
                             </button>
                         </div>

@@ -119,5 +119,5 @@
     
 
     <script src="{{ asset('theme/js/TestLoan.js') }}?v={{ time() }}"></script>
-    <!-- <script src="{{ asset('theme/js/ShutKeyboard.js') }}?v={{ time() }}"></script> -->
+    <script src="{{ asset('theme/js/ShutKeyboard.js') }}?v={{ time() }}"></script>
 </section>

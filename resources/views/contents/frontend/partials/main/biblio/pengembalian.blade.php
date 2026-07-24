@@ -104,5 +104,5 @@
 </div>
 
 <script src="{{ asset('theme/js/ReturnLoan.js') }}?v={{ time() }}"></script>
-<script src="{{ asset('theme/js/ShutKeyboard.js') }}?v={{ time() }}"></script>
+<!-- <script src="{{ asset('theme/js/ShutKeyboard.js') }}?v={{ time() }}"></script> -->
 <script src="/path/to/your/theme/assets/plugins/sweetalert2/sweetalert2.all.min.js"></script>
